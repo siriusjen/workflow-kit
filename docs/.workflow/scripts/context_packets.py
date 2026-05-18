@@ -185,6 +185,24 @@ STAGE_DEFS = {
             "05-测试验证/全链路验证报告-YYYYMMDD.md",
             "05-测试验证/RDTV报告.json"
         ]
+    },
+    "S10": {
+        "name": "验收发布",
+        "packet": "上下文包-S10-验收发布.md",
+        "must_read": [
+            "state.json",
+            "01-需求确认/OpenSpec决策记录-*.md",
+            "05-测试验证/全链路验证报告-*.md",
+            "05-测试验证/RDTV报告.json",
+            "05-测试验证/HTTP验收记录-*.md"
+        ],
+        "on_demand": [
+            "openspec/changes/：仅 formal-change 时读取，执行 validate/archive"
+        ],
+        "outputs": [
+            "openspec/变更归档/（formal-change 时）",
+            "state.json：current_stage → done"
+        ]
     }
 }
 
@@ -197,6 +215,7 @@ ALIASES = {
     "测试验证": "S7",
     "构建验收": "S8",
     "交叉验证": "S9",
+    "验收发布": "S10",
 }
 
 

@@ -50,11 +50,15 @@ cp workflow-kit/使用指南.md your-project/
    - Java 项目可保留并默认读取 `docs/.workflow/Java开发规范.md`。
    - 非 Java 项目可保留但不默认读取，或替换为对应语言规范。
 
-3. 文档 Git 策略已确认：
+3. 构建产物配置已按项目确认：
+   - 默认配置偏向 Java/Maven：`target/*.jar`、`mvn -DskipTests package`。
+   - 非 Java 项目必须创建或覆盖 `docs/.workflow/project_config.json` 的 `build.artifact_pattern`、`artifact_label`、`build_command`、`build_record_keyword`。
+
+4. 文档 Git 策略已确认：
    - `docs/.workflow/` 建议纳入版本管理。
    - `docs/01-features/`、`docs/02-bug-fix/`、`docs/03-knowledge/` 是否纳入 Git，由目标项目决定。
 
-4. OpenSpec 使用方式已确认：
+5. OpenSpec 使用方式已确认：
    - 工作流默认使用 feature-local OpenSpec：`docs/01-features/Fxx-功能名/openspec/`。
    - 如果目标项目依赖根目录 `openspec/` CLI，可把根目录作为 CLI 镜像或全局能力规范；feature 文档仍以 feature-local openspec 为准。
 
@@ -83,12 +87,21 @@ Java 项目再确认：
 grep -n "Java开发规范.md" AGENTS.md CLAUDE.md
 ```
 
+如需覆盖默认构建配置，创建并确认：
+
+```bash
+cat docs/.workflow/project_config.json
+```
+
+Java/Maven/Jar 项目可以不创建该文件，脚本会使用默认值。非 Java 项目安装后先创建或覆盖该文件，再进入 S8 构建验收。
+
 ## 依赖
 
 - Python 3.8+，无第三方依赖
 - Git，可选；S6 实现阶段推荐用 worktree 隔离代码修改
 - Claude Code 或 Codex
 - Obsidian，可选；vault 可指向项目根目录或 `docs/`
+- Java/Maven 不是 workflow-kit 的硬依赖，只是脚本默认值；非 Java 项目通过项目内 `project_config.json` 覆盖。
 
 ## 不迁移的内容
 

@@ -66,9 +66,9 @@ python3 docs/.workflow/scripts/stage_gates.py step-done <FID> "步骤名" '{"out
 
 # 记录子Agent派遣和返回（真实派遣或并行派遣都必须记录）
 python3 docs/.workflow/scripts/stage_gates.py subagent-start <FID> "任务实现" '{"context_packet":"06-上下文包/上下文包-S6-实现.md","input_paths":["03-落地计划/任务清单.json"],"output_paths":["04-实现记录/实现记录-YYYYMMDD-T01.md"],"instruction":"实现 T01"}'
-python3 docs/.workflow/scripts/stage_gates.py subagent-done <FID> "任务实现" '{"status":"done","summary":"...","output_paths":["..."],"key_conclusions":["..."]}'
+python3 docs/.workflow/scripts/stage_gates.py subagent-done <FID> "任务实现" '{"dispatch_id":"d-YYYYMMDDHHMMSS-xxxxxxxx","status":"done","summary":"...","output_paths":["..."],"key_conclusions":["..."]}'
 
-# OpenSpec 决策、Jar 构建和 HTTP 验收门禁
+# OpenSpec 决策、构建产物和 HTTP 验收门禁
 python3 docs/.workflow/scripts/stage_gates.py auto <FID> openspec-decision-recorded
 python3 docs/.workflow/scripts/stage_gates.py auto <FID> artifact-package-done
 python3 docs/.workflow/scripts/stage_gates.py auto <FID> http-acceptance-done
@@ -89,6 +89,8 @@ python3 docs/.workflow/scripts/validators.py rdtv_closure <FID>
 # 上下文用量
 python3 docs/.workflow/scripts/stage_gates.py ctx-update <FID> <百分比>
 ```
+
+S8 构建产物默认按 Java/Maven/Jar 校验；非 Java 项目必须在 `docs/.workflow/project_config.json` 按实际产物覆盖。
 
 ## 子 Agent 派遣原则
 
@@ -115,7 +117,7 @@ python3 docs/.workflow/scripts/stage_gates.py ctx-update <FID> <百分比>
 - `progress` 必须记录非空 `completed_action`、`key_conclusions`、`next_step`，且 `outputs` 与 `verification` 不能同时为空。
 - `step-done` 必须有对应未闭合的 `step-start`，并提供非空 `key_conclusions` 与 `next_step`。
 - 未生成当前阶段上下文包，不得派遣子 Agent。
-- `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-done` 必须匹配当前阶段、当前步骤中未关闭的 `subagent-start`，且 `output_paths` 必须存在。
+- `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-start` 会输出 `dispatch_id`，并行或同名子 Agent 返回时 `subagent-done` 必须携带该值；`output_paths` 必须存在。
 - 每个 `implement-Txx` 完成前必须增量更新 `04-实现记录/*.md`，并在 `step-done` 的 `outputs` 中列出该实现记录。
 - 单元测试、聚焦测试通过后必须打包；打包完成后提示人工本地启动/部署服务，并通过真实 HTTP API 请求完成验收；未执行 `artifact-package-done` 和 `http-acceptance-done` 不允许 `approve-release`。
 

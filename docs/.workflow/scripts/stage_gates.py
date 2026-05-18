@@ -21,6 +21,7 @@ import os
 import sys
 import re
 import subprocess
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -296,6 +297,57 @@ def yellow(t):   return color(t, "33")
 def red(t):      return color(t, "31")
 def cyan(t):     return color(t, "36")
 def bold(t):     return color(t, "1")
+
+
+DEFAULT_BUILD_CONFIG = {
+    "artifact_pattern": "target/*.jar",
+    "artifact_label": "Jar",
+    "build_command": "mvn -DskipTests package",
+    "build_record_keyword": "Jar",
+}
+
+
+def load_build_config() -> dict:
+    config_file = WORKFLOW_DIR / "project_config.json"
+    if not config_file.exists():
+        print(yellow("使用默认 Java/Maven 构建配置"))
+        return dict(DEFAULT_BUILD_CONFIG)
+    try:
+        raw = json.loads(config_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print(yellow("project_config.json 解析失败，使用默认 Java/Maven 构建配置"))
+        return dict(DEFAULT_BUILD_CONFIG)
+    build = raw.get("build")
+    if not isinstance(build, dict):
+        print(yellow("project_config.json 缺少 build 配置，使用默认 Java/Maven 构建配置"))
+        return dict(DEFAULT_BUILD_CONFIG)
+    merged = dict(DEFAULT_BUILD_CONFIG)
+    for key in DEFAULT_BUILD_CONFIG:
+        value = build.get(key)
+        if isinstance(value, str) and value.strip():
+            merged[key] = value.strip()
+    return merged
+
+
+def _normalize_action_text(value: str) -> str:
+    return re.sub(r"[-_]", "", value.lower())
+
+
+def _step_name_violates_blocked(step_name: str, blocked_actions) -> Optional[str]:
+    normalized_step = _normalize_action_text(step_name)
+    for item in blocked_actions or []:
+        if not isinstance(item, str) or not item.strip():
+            continue
+        normalized_blocked = _normalize_action_text(item.strip())
+        if normalized_blocked and normalized_blocked in normalized_step:
+            return item
+        if normalized_blocked == "writecode" and normalized_step.startswith("implement"):
+            return item
+    return None
+
+
+def generate_dispatch_id() -> str:
+    return f"d-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
 
 
 def _non_empty_string(value) -> bool:
@@ -648,18 +700,21 @@ def validate_auto_prereqs(fdir: Path, state: dict, key: str):
                 print(red(f"❌ formal-change 决策记录未声明 authoritative_location: {records[-1].relative_to(fdir)}"))
                 sys.exit(1)
     elif key == "artifact-package-done":
+        build_cfg = load_build_config()
         build_records = sorted((fdir / "05-测试验证").glob("构建记录-*.md"))
-        jars = sorted(PROJECT_ROOT.glob("target/*.jar"))
+        artifacts = sorted(PROJECT_ROOT.glob(build_cfg["artifact_pattern"]))
         if not build_records:
             print(red("❌ 缺少构建记录: 05-测试验证/构建记录-YYYYMMDD.md"))
             sys.exit(1)
-        if not jars:
-            print(red("❌ 未找到 Jar 包: target/*.jar"))
-            print(yellow("请先执行 mvn -DskipTests package 或等效打包命令。"))
+        if not artifacts:
+            print(red(f"❌ 未找到 {build_cfg['artifact_label']} 产物: {build_cfg['artifact_pattern']}"))
+            print(yellow(f"请先执行 {build_cfg['build_command']} 或等效打包命令。"))
             sys.exit(1)
         latest = build_records[-1].read_text(encoding="utf-8")
-        if not re.search(r"target/.+\.jar|Jar|jar", latest):
-            print(red(f"❌ 构建记录未明确 Jar 路径: {build_records[-1].relative_to(fdir)}"))
+        record_keyword = re.escape(build_cfg["build_record_keyword"])
+        artifact_pattern = re.escape(build_cfg["artifact_pattern"].replace("*", ""))
+        if not re.search(record_keyword, latest, flags=re.I) and not re.search(artifact_pattern, latest, flags=re.I):
+            print(red(f"❌ 构建记录未明确 {build_cfg['artifact_label']} 路径: {build_records[-1].relative_to(fdir)}"))
             sys.exit(1)
         if not re.search(r"passed\s*[:：]\s*(true|是|通过)|构建.*(成功|通过)", latest, flags=re.I):
             print(red(f"❌ 构建记录未明确构建通过: {build_records[-1].relative_to(fdir)}"))
@@ -1043,6 +1098,19 @@ def append_execution_log(fdir: Path, stage: str, step: str, status: str, conclus
 
 def cmd_step_start(fdir: Path, step_name: str, plan_input: str):
     s = load_state(fdir)
+    if s.get("human_approval_pending") is True:
+        print(red("❌ 当前存在待人工确认锚点，禁止 step-start。"))
+        print(bold("当前合法下一动作:"))
+        for action in (s.get("allowed_next_actions") or ["（无）"]):
+            print(f"  → {action}")
+        sys.exit(1)
+
+    blocked_hit = _step_name_violates_blocked(step_name, s.get("blocked_actions", []))
+    if blocked_hit:
+        print(red(f"❌ step-start 被 blocked_actions 阻断: {step_name}"))
+        print(red(f"  命中: {blocked_hit}"))
+        sys.exit(1)
+
     current_in_progress = s.get("in_progress_step")
     if current_in_progress:
         print(red(
@@ -1387,7 +1455,9 @@ def cmd_subagent_start(fdir: Path, subagent_name: str, dispatch_input: str):
     validate_subagent_dispatch(s, subagent_name, data)
     validate_context_packet_for_subagent(fdir, s, data)
     validate_subagent_paths(fdir, "input_paths", data.get("input_paths", []), True)
+    dispatch_id = generate_dispatch_id()
     entry = {
+        "dispatch_id": dispatch_id,
         "subagent": subagent_name,
         "stage": s.get("current_stage", "?"),
         "step": s.get("current_step", "?"),
@@ -1408,6 +1478,7 @@ def cmd_subagent_start(fdir: Path, subagent_name: str, dispatch_input: str):
         "started", data.get("instruction", "")
     )
     print(green(f"✅ 子Agent 派遣已记录: {subagent_name}"))
+    print(cyan(f"   dispatch_id: {dispatch_id}"))
     if entry.get("context_packet"):
         print(cyan(f"   上下文包: {entry['context_packet']}"))
 
@@ -1419,15 +1490,23 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
     validate_subagent_paths(fdir, "output_paths", data.get("output_paths", []), True)
     log = s.setdefault("subagent_log", [])
     target = None
-    for entry in reversed(log):
-        if (
-            entry.get("subagent") == subagent_name
-            and entry.get("status") == "dispatched"
-            and entry.get("stage") == s.get("current_stage")
-            and entry.get("step") == s.get("current_step")
-        ):
-            target = entry
-            break
+    dispatch_id = data.get("dispatch_id")
+    if _non_empty_string(dispatch_id):
+        for entry in reversed(log):
+            if entry.get("dispatch_id") == dispatch_id and entry.get("status") == "dispatched":
+                target = entry
+                break
+    else:
+        print(yellow("⚠️ 建议携带 dispatch_id 以防并行错配"))
+        for entry in reversed(log):
+            if (
+                entry.get("subagent") == subagent_name
+                and entry.get("status") == "dispatched"
+                and entry.get("stage") == s.get("current_stage")
+                and entry.get("step") == s.get("current_step")
+            ):
+                target = entry
+                break
     if target is None:
         print(red(f"❌ 找不到未完成的 subagent-start 记录: {subagent_name}"))
         print(yellow("未执行 subagent-start 的派遣视为未发生，禁止事后补 subagent-done。"))
@@ -1440,6 +1519,17 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
         "key_conclusions": data.get("key_conclusions", []),
         "corrections": data.get("corrections", [])
     })
+    correction_count = len(data.get("corrections", []))
+    if correction_count >= 3:
+        s.setdefault("exception_log", []).append({
+            "type": "correction-threshold",
+            "detail": f"{subagent_name} 修正次数达到 {correction_count} 次",
+            "subagent": subagent_name,
+            "correction_count": correction_count,
+            "stage": s.get("current_stage", "?"),
+            "step": s.get("current_step", "?"),
+            "recorded_at": now_iso()
+        })
     save_state(fdir, s)
     update_recovery_card(fdir, s)
     append_execution_log(
@@ -1449,6 +1539,9 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
     print(green(f"✅ 子Agent 返回已记录: {subagent_name}"))
     if target.get("summary"):
         print(cyan(f"   摘要: {target['summary'][:100]}"))
+    if correction_count >= 3:
+        print(red(f"❌ {subagent_name} 修正次数已达 {correction_count} 次，需要触发人工锚点。"))
+        print(yellow(f"   命令: python3 docs/.workflow/scripts/stage_gates.py approve {s.get('feature_id')} approve-correction"))
 
 
 # ── 命令：auto ────────────────────────────────────────────────────────────────
