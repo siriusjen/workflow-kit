@@ -1,5 +1,5 @@
 {
-  "_comment": "项目级工作流配置模板；安装到具体项目后按需覆盖。默认值适用于 Java/Maven/Jar 项目。",
+  "_comment": "项目级工作流配置，安装到具体项目后按需覆盖，不要提交到 workflow-kit 通用包",
   "build": {
     "artifact_pattern": "target/*.jar",
     "artifact_label": "Jar",

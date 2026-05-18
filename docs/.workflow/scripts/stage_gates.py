@@ -191,6 +191,14 @@ AUTO_TRANSITIONS = {
         "blocked": ["write-code"],
         "sets": {"human_approval_required": True, "human_approval_pending": True}
     },
+    "fact-inheritance-passed": {
+        "from_stages": ["技术方案"],
+        "checklist_set": "fact_inheritance_check",
+        "sets_step": "run-rd-mapping-check",
+        "step_index": 3,
+        "allowed_next": ["validators.py rd_mapping", "auto rd-mapping-complete"],
+        "blocked": ["write-code", "split-tasks"]
+    },
     "rd-mapping-complete": {
         "from_stages": ["技术方案"],
         "checklist_set": "rd_mapping_complete",
@@ -699,6 +707,11 @@ def validate_auto_prereqs(fdir: Path, state: dict, key: str):
             if "authoritative_location" not in latest:
                 print(red(f"❌ formal-change 决策记录未声明 authoritative_location: {records[-1].relative_to(fdir)}"))
                 sys.exit(1)
+    elif key == "rd-mapping-complete":
+        if not state.get("checklist", {}).get("fact_inheritance_check"):
+            print(red("❌ 技术方案进入落地计划前必须先通过需求事实继承一致性校验。"))
+            print(yellow("请先执行: python3 docs/.workflow/scripts/validators.py fact_inheritance <FID>"))
+            sys.exit(1)
     elif key == "artifact-package-done":
         build_cfg = load_build_config()
         build_records = sorted((fdir / "05-测试验证").glob("构建记录-*.md"))
@@ -768,7 +781,7 @@ def find_feature_dir(feature_id: str) -> Path:
     return matches[0]
 
 def atomic_write_text(path: Path, content: str):
-    tmp = path.with_name(f".{path.name}.tmp")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(content, encoding="utf-8")
     os.replace(tmp, path)
 

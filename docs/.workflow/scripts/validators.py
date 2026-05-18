@@ -2,9 +2,10 @@
 """
 validators.py — 自动完整性校验器 v2.0
 
-5个校验器：
+6个校验器：
   req_coverage     需求完整性（S2结束）
   req_cross_validate 需求交叉验证（S2结束）
+  fact_inheritance 技术方案事实继承一致性（S3结束）
   rdt_mapping      映射闭环（S5结束）
   impl_drift       实现偏离（每次实现记录后）
   rdtv_closure     RDTV闭环（S9全链路验证后）
@@ -36,6 +37,16 @@ REQUIRED_DIMENSIONS = ["main_flow", "exception_flow", "boundary", "permission", 
 DIMENSION_LABELS = {
     "main_flow": "主流程", "exception_flow": "异常流程",
     "boundary": "边界条件", "permission": "权限控制", "acceptance": "验收口径"
+}
+PASSING_FACT_STATUSES = {"preserved", "changed_with_approval"}
+CODE_EVIDENCE_FACT_TYPES = {
+    "data_source",
+    "current_logic",
+    "dependency_logic",
+    "forbidden_legacy_path",
+    "api_contract",
+    "integration_contract",
+    "external_dependency"
 }
 
 
@@ -80,6 +91,10 @@ def normalize_mapping_values(value):
     if value:
         return [str(value)]
     return []
+
+
+def non_empty_list(value):
+    return isinstance(value, list) and any(str(v).strip() for v in value)
 
 
 def extract_requirement_numbers(fdir: Path):
@@ -205,7 +220,84 @@ def v_req_cross_validate(fdir: Path) -> bool:
     return passed
 
 
-# ── 校验器 3: 映射闭环 (R→D→T) ───────────────────────────────────────────────
+def v_fact_inheritance(fdir: Path) -> bool:
+    print(bold("\n── 校验器 3: 技术方案事实继承一致性 ──"))
+
+    anchors = sorted((fdir / "01-需求确认").glob("需求事实锚点*.json"))
+    if not anchors:
+        print(red("  缺少需求事实锚点: 01-需求确认/需求事实锚点.json"))
+        print(yellow("  请先从需求输入/确认中抽取不可漂移事实。"))
+        return False
+
+    influences = sorted((fdir / "02-技术方案").glob("代码影响点与依赖逻辑清单*.md"))
+    if not influences:
+        print(red("  缺少代码影响点与依赖逻辑清单: 02-技术方案/代码影响点与依赖逻辑清单.md"))
+        print(yellow("  请先梳理当前代码影响点与依赖逻辑。"))
+        return False
+
+    checks = sorted((fdir / "02-技术方案").glob("技术方案一致性检查*.json"))
+    if not checks:
+        print(red("  缺少技术方案一致性检查: 02-技术方案/技术方案一致性检查.json"))
+        return False
+
+    anchor_data = load_json(anchors[-1])
+    check_data = load_json(checks[-1])
+
+    facts = check_data.get("facts") or check_data.get("checks") or []
+    if not facts:
+        print(red("  一致性检查中未找到 facts/checks 列表"))
+        return False
+
+    details = []
+    passed = True
+    for fact in facts:
+        fact_id = str(fact.get("fact_id") or fact.get("id") or "?")
+        status = str(fact.get("status", "")).strip().lower()
+        fact_type = str(fact.get("fact_type", fact.get("type", ""))).strip().lower()
+        tech_ref = str(fact.get("tech_plan_reference", fact.get("tech_ref", ""))).strip()
+        summary = str(fact.get("summary", fact.get("description", fact_id))).strip()
+        approval_ref = str(fact.get("approval_reference", fact.get("approval_ref", ""))).strip()
+        code_evidence = fact.get("code_evidence", [])
+        requires_code = bool(fact.get("requires_code_evidence")) or fact_type in CODE_EVIDENCE_FACT_TYPES
+
+        issue = []
+        if not summary:
+            issue.append("缺少摘要")
+        if not tech_ref:
+            issue.append("缺少技术方案引用")
+        if status not in PASSING_FACT_STATUSES:
+            issue.append(f"状态={status or '空'}")
+        if status == "changed_with_approval" and not approval_ref:
+            issue.append("变更缺少审批引用")
+        if requires_code and not non_empty_list(code_evidence):
+            issue.append("缺少代码证据")
+
+        if issue:
+            passed = False
+            details.append({"ok": False, "msg": f"{fact_id}: {summary} — {', '.join(issue)}"})
+        else:
+            details.append({"ok": True, "msg": f"{fact_id}: {summary} ✓"})
+
+    if anchor_data.get("facts") and len(anchor_data.get("facts", [])) > len(facts):
+        passed = False
+        details.append({
+            "ok": False,
+            "msg": "技术方案一致性检查中的 facts 数量少于需求事实锚点数量"
+        })
+
+    print_result(
+        "fact_inheritance",
+        passed,
+        details,
+        "需求事实未被技术方案完整继承" if not passed else None
+    )
+
+    if passed:
+        _trigger_auto(fdir.name.split("-")[0], "fact-inheritance-passed")
+    return passed
+
+
+# ── 校验器 4: 映射闭环 (R→D→T) ───────────────────────────────────────────────
 
 def v_rdt_mapping(fdir: Path) -> bool:
     print(bold("\n── 校验器 3: 映射闭环 R→D→T ──"))
@@ -435,6 +527,8 @@ def main():
         sys.exit(0 if v_req_coverage(fdir) else 1)
     elif v == "req_cross_validate":
         sys.exit(0 if v_req_cross_validate(fdir) else 1)
+    elif v == "fact_inheritance":
+        sys.exit(0 if v_fact_inheritance(fdir) else 1)
     elif v == "rdt_mapping":
         sys.exit(0 if v_rdt_mapping(fdir) else 1)
     elif v == "impl_drift":
@@ -452,6 +546,8 @@ def main():
             v_req_coverage(fdir); ran += 1
         if not cl.get("req_cross_validate") and stage == "需求确认":
             v_req_cross_validate(fdir); ran += 1
+        if not cl.get("fact_inheritance_check") and stage == "技术方案":
+            v_fact_inheritance(fdir); ran += 1
         if not cl.get("rdt_mapping_complete") and stage in ("任务拆分","实现"):
             v_rdt_mapping(fdir); ran += 1
         if stage == "交叉验证":

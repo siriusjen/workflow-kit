@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -86,7 +87,7 @@ def load_template(name: str) -> str:
 
 
 def atomic_write_text(path: Path, content: str):
-    tmp = path.with_name(f".{path.name}.tmp")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(content, encoding="utf-8")
     os.replace(tmp, path)
 
@@ -156,6 +157,7 @@ def build_state(feature_id: str, feature_name: str, input_mode: str) -> dict:
             "openspec_decision_recorded": False,
             "req_coverage_check": False,
             "req_cross_validate": False,
+            "fact_inheritance_check": False,
             "rd_mapping_complete": False,
             "rdt_mapping_complete": False,
             "worktree_created": False,

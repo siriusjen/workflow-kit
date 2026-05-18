@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -47,7 +48,8 @@ STAGE_DEFS = {
         ],
         "outputs": [
             "01-需求确认/OpenSpec决策记录-YYYYMMDD.md",
-            "01-需求确认/差异报告-YYYYMMDD.json"
+            "01-需求确认/差异报告-YYYYMMDD.json",
+            "01-需求确认/需求事实锚点.json"
         ]
     },
     "S3": {
@@ -58,7 +60,8 @@ STAGE_DEFS = {
             "01-需求确认/需求说明书-v*.md",
             "01-需求确认/覆盖检查.json",
             "01-需求确认/OpenSpec决策记录-*.md",
-            "01-需求确认/差异报告-*.json"
+            "01-需求确认/差异报告-*.json",
+            "01-需求确认/需求事实锚点.json"
         ],
         "on_demand": [
             "代码文件：只在方案需要验证既有实现时用 rg 定位后读取",
@@ -66,7 +69,9 @@ STAGE_DEFS = {
         ],
         "outputs": [
             "02-技术方案/技术方案-v1.md",
-            "02-技术方案/需求方案映射.json"
+            "02-技术方案/需求方案映射.json",
+            "02-技术方案/代码影响点与依赖逻辑清单.md",
+            "02-技术方案/技术方案一致性检查.json"
         ]
     },
     "S4": {
@@ -75,7 +80,10 @@ STAGE_DEFS = {
         "must_read": [
             "state.json",
             "01-需求确认/需求说明书-v*.md",
+            "01-需求确认/需求事实锚点.json",
             "02-技术方案/技术方案-v*.md",
+            "02-技术方案/代码影响点与依赖逻辑清单.md",
+            "02-技术方案/技术方案一致性检查.json",
             "02-技术方案/需求方案映射.json"
         ],
         "on_demand": [
@@ -91,7 +99,10 @@ STAGE_DEFS = {
         "must_read": [
             "state.json",
             "01-需求确认/需求说明书-v*.md",
+            "01-需求确认/需求事实锚点.json",
             "02-技术方案/技术方案-v*.md",
+            "02-技术方案/代码影响点与依赖逻辑清单.md",
+            "02-技术方案/技术方案一致性检查.json",
             "03-落地计划/落地计划-v*.md"
         ],
         "on_demand": [
@@ -168,7 +179,10 @@ STAGE_DEFS = {
         "must_read": [
             "state.json",
             "01-需求确认/需求说明书-v*.md",
+            "01-需求确认/需求事实锚点.json",
             "02-技术方案/技术方案-v*.md",
+            "02-技术方案/代码影响点与依赖逻辑清单.md",
+            "02-技术方案/技术方案一致性检查.json",
             "03-落地计划/任务清单.json",
             "03-落地计划/RDTV映射表.json",
             "04-实现记录/实现记录-*.md",
@@ -255,7 +269,7 @@ def load_json(path: Path, default):
 
 def atomic_write(path: Path, content: str):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(content, encoding="utf-8")
     os.replace(tmp, path)
 
