@@ -1,0 +1,9 @@
+{
+  "_comment": "项目级工作流配置模板；安装到具体项目后按需覆盖。默认值适用于 Java/Maven/Jar 项目。",
+  "build": {
+    "artifact_pattern": "target/*.jar",
+    "artifact_label": "Jar",
+    "build_command": "mvn -DskipTests package",
+    "build_record_keyword": "Jar"
+  }
+}

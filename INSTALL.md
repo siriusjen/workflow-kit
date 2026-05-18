@@ -18,6 +18,7 @@ workflow-kit/
     └── .workflow/
         ├── 工作流规范.md
         ├── Java开发规范.md
+        ├── project_config.json
         ├── Obsidian文档规范.md
         ├── 知识库规范.md
         ├── bug修复规范.md
@@ -52,7 +53,7 @@ cp workflow-kit/使用指南.md your-project/
 
 3. 构建产物配置已按项目确认：
    - 默认配置偏向 Java/Maven：`target/*.jar`、`mvn -DskipTests package`。
-   - 非 Java 项目必须创建或覆盖 `docs/.workflow/project_config.json` 的 `build.artifact_pattern`、`artifact_label`、`build_command`、`build_record_keyword`。
+   - 非 Java 项目必须覆盖 `docs/.workflow/project_config.json` 的 `build.artifact_pattern`、`artifact_label`、`build_command`、`build_record_keyword`。
 
 4. 文档 Git 策略已确认：
    - `docs/.workflow/` 建议纳入版本管理。
@@ -87,13 +88,13 @@ Java 项目再确认：
 grep -n "Java开发规范.md" AGENTS.md CLAUDE.md
 ```
 
-如需覆盖默认构建配置，创建并确认：
+确认构建配置：
 
 ```bash
 cat docs/.workflow/project_config.json
 ```
 
-Java/Maven/Jar 项目可以不创建该文件，脚本会使用默认值。非 Java 项目安装后先创建或覆盖该文件，再进入 S8 构建验收。
+Java/Maven/Jar 项目可以直接使用模板默认值。非 Java 项目安装后先覆盖该文件，再进入 S8 构建验收。
 
 ## 依赖
 
