@@ -212,8 +212,24 @@ def v_req_cross_validate(fdir: Path) -> bool:
         )
         details.append({"ok": True, "msg": msg})
 
-    print_result("req_cross_validate", passed, details,
-                  f"发现 {len(discrepancies)} 处差异" if not passed else None)
+    anchor_missing = False
+    if passed:
+        anchors = sorted(cv_dir.glob("需求事实锚点*.json"))
+        if not anchors:
+            passed = False
+            anchor_missing = True
+            details.append({
+                "ok": False,
+                "msg": "需求事实锚点: 缺少 01-需求确认/需求事实锚点.json"
+            })
+
+    block_reason = None
+    if not passed:
+        block_reason = "缺少需求事实锚点" if anchor_missing else f"发现 {len(discrepancies)} 处差异"
+
+    print_result("req_cross_validate", passed, details, block_reason)
+    if anchor_missing:
+        print(yellow("  请确认需求交叉验证子Agent已按要求产出此文件"))
 
     if passed:
         _trigger_auto(fdir.name.split("-")[0], "req-cross-validated")
