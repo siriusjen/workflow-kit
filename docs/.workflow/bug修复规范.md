@@ -17,11 +17,12 @@
 6. 每一步开始前先对照规范，确认当前允许动作。
 7. 每一步结束时同时输出 bug 结论和规范检查结论。
 8. 发现规范缺口时，先写进流程文档，再继续后续排查。
-9. 修复前先生成 bug 上下文包：`context_packets.py build BFxx B3`。
-10. 每个小步必须 `stage_gates.py step-start` → `progress` → `step-done`，未关闭不得进入下一步。
-11. 派 bug 子Agent前必须 `subagent-start`，返回必须 `subagent-done` 并携带 `dispatch_id`。
-12. 关闭前必须过 `validators.py bug_chain BFxx`、`approve-release`。
-13. `state.json` 是唯一机器状态；写 `state.json` 的命令禁止并行执行。
+9. 文档写入后必须立即读回验证；补丁失败或读回仍为空时，禁止进入代码排查/测试。
+10. 修复前先生成 bug 上下文包：`context_packets.py build BFxx B3`。
+11. 每个小步必须 `stage_gates.py step-start` → `progress` → `step-done`，未关闭不得进入下一步。
+12. 派 bug 子Agent前必须 `subagent-start`，返回必须 `subagent-done` 并携带 `dispatch_id`。
+13. 关闭前必须过 `validators.py bug_chain BFxx`、`approve-release`。
+14. `state.json` 是唯一机器状态；写 `state.json` 的命令禁止并行执行。
 ```
 
 ## 最小加载地图（默认按需，不整篇读）
@@ -103,6 +104,7 @@ docs/02-bug-fix/
 - 每一步结束时的记录必须同时包含两类结论：`bug 结论` 和 `规范检查结论`；缺任一项不得 `step-done`。
 - 一旦发现规范缺口，必须先写入 `09-复盘与沉淀.md` 或当前阶段的执行记录，再继续后续排查。
 - 排查材料不得长期停留在 `/private/tmp` 或个人临时目录，必须在本次 bug 目录的 `11-排查附件/` 中留存副本并在执行记录中登记路径。
+- 任一文档补丁、脚本写入、附件同步失败后，必须立即停止后续排查，先读回目标文件确认内容已落库；未确认前不得宣称已完成文档或进入下一阶段。
 
 ### 1.2 编号规则
 
