@@ -1,6 +1,6 @@
 # 02-Bug 修复规范
 
-> **版本**: v1.2 · 2026-05-19
+> **版本**: v1.3 · 2026-05-19
 > **适用范围**: `docs/02-bug-fix/` 目录下所有 Bug 处理流程
 > **使用方式**: 告诉大模型"请按 `docs/.workflow/bug修复规范.md` 来处理我的bug，bug描述如下：..."
 
@@ -218,6 +218,43 @@ python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-release
 ```
 
 未通过根因锚点不得进入方案确认；未通过方案锚点不得进入修复；未通过发布锚点不得关闭 bug。
+
+---
+
+## 1.4.2 Superpowers 技能使用规范
+
+Bug 处理允许用 Superpowers 里的技能，但必须按环节使用，不得混用、跳用、事后补用。
+
+| 环节 | 适合使用的技能 | 约束 |
+|------|----------------|------|
+| 01-03 问题描述 / 影响范围 / 根因分析 | `systematic-debugging` | 先证据、后修复；未完成根因分析前不得写生产代码 |
+| 04-05 解决方案 / 任务拆解 | `writing-plans` | 方案与任务必须可执行、可验收、可分工 |
+| 05-06 任务拆解后进入实现 | `using-git-worktrees` | 仅在代码实现阶段创建 worktree；**不允许**把 bug 文档、附件或规范文档放进 worktree |
+| 06 代码修复 | `test-driven-development` | 改代码前先写失败测试；先红后绿 |
+| 07-08 测试验证 / 验收发布 | `test-driven-development` + `verification-before-completion` | 先跑验证命令，再写结论；没有 fresh evidence 不得宣称完成 |
+| 08-10 验收发布 / 复盘 / 协作记录 | `verification-before-completion` + `finishing-a-development-branch` | 只有在测试与构建都通过后，才进入收口与分支整理 |
+| 多个互不依赖的任务并行 | `dispatching-parallel-agents` / `subagent-driven-development` | 仅适用于彼此独立、互不共享状态的任务；不得为了省事强行并行 |
+
+硬规则：
+
+- `systematic-debugging` 是 bug 修复的起点；任何测试失败、构建失败、复现不一致，都先回到它。
+- `writing-plans` 产出的任务必须和 `05-任务拆解.md` 对齐，不能在计划外临时加活。
+- `using-git-worktrees` 只用于代码和测试实现，不用于写 bug 文档、流程文档、知识库文档、附件索引或流程规范。
+- `test-driven-development` 适用于所有行为变更和 bug 修复；先写失败测试，再改代码。
+- `verification-before-completion` 适用于所有“已完成/已通过/可以关闭”类表述；没有新鲜验证结果不得下结论。
+- `finishing-a-development-branch` 只在测试与构建结果已确认后使用，用于决定 merge / push / 保留 / 丢弃。
+
+---
+
+## 1.4.3 worktree 与文档边界
+
+为了避免把流程文档和实现代码混在不同工作区，必须遵守以下边界：
+
+- `worktree` 只放实现代码、测试代码、必要的脚本和生成产物。
+- `docs/02-bug-fix/**`、`docs/.workflow/**`、`docs/03-knowledge/**`、`workflow-kit` 同步内容，全部留在**当前分支工作区**编辑，不得放进 worktree。
+- 本次 bug 的目录文档、`11-排查附件/`、`state.json`、`事实锚点.json`、`恢复包.md` 都属于当前分支的流程资产，不能在 worktree 中新建或修改。
+- 如果一个任务同时涉及代码与文档，必须先在当前分支完成文档，再进入 worktree 做代码；代码结束后如需补文档，再回到当前分支写入。
+- 不允许把文档通过复制、软链、临时目录挂载等方式“带进” worktree；review 时发现即视为违规。
 
 ---
 
