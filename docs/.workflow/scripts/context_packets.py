@@ -357,11 +357,26 @@ def find_bugfix_dir(bug_id: str) -> Path:
     if not BUGFIX_ROOT.exists():
         print(f"找不到 bugfix 根目录: {BUGFIX_ROOT}", file=sys.stderr)
         sys.exit(1)
+    requested_date = None
+    requested_id = bug_id
+    if "/" in bug_id:
+        requested_date, requested_id = bug_id.split("/", 1)
+    elif "@" in bug_id:
+        requested_id, requested_date = bug_id.split("@", 1)
+
     matches = []
     for date_dir in sorted([d for d in BUGFIX_ROOT.iterdir() if d.is_dir()], key=lambda p: p.name, reverse=True):
-        matches.extend([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(bug_id)])
+        if requested_date and date_dir.name != requested_date:
+            continue
+        matches.extend([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(requested_id)])
     if not matches:
         print(f"找不到 bugfix: {bug_id}", file=sys.stderr)
+        sys.exit(1)
+    if len(matches) > 1 and not requested_date:
+        print(f"bug 编号跨日期歧义: {bug_id}", file=sys.stderr)
+        print("请使用 YYYY-MM-DD/BFxx 或 BFxx@YYYY-MM-DD 指定日期", file=sys.stderr)
+        for match in matches:
+            print(f"- {match.parent.name}/{match.name}", file=sys.stderr)
         sys.exit(1)
     return matches[0]
 
@@ -514,6 +529,7 @@ def key_bug_state_summary(state: dict):
         "bug_name": state.get("bug_name"),
         "current_stage": state.get("current_stage"),
         "current_step": state.get("current_step"),
+        "current_packet": state.get("context_manifest", {}).get("current_packet"),
         "allowed_next_actions": state.get("allowed_next_actions", []),
         "blocked_actions": state.get("blocked_actions", []),
         "checklist": state.get("checklist", {}),

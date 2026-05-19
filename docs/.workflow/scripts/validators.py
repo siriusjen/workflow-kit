@@ -82,11 +82,25 @@ def find_bugfix_dir(bug_id: str) -> Path:
     if not BUGFIX_ROOT.exists():
         print(red(f"找不到 bugfix 根目录: {BUGFIX_ROOT}"))
         sys.exit(1)
+    requested_date = None
+    requested_id = bug_id
+    if "/" in bug_id:
+        requested_date, requested_id = bug_id.split("/", 1)
+    elif "@" in bug_id:
+        requested_id, requested_date = bug_id.split("@", 1)
     matches = []
     for date_dir in sorted([d for d in BUGFIX_ROOT.iterdir() if d.is_dir()], key=lambda p: p.name, reverse=True):
-        matches.extend([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(bug_id)])
+        if requested_date and date_dir.name != requested_date:
+            continue
+        matches.extend([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(requested_id)])
     if not matches:
         print(red(f"找不到 bugfix: {bug_id}"))
+        sys.exit(1)
+    if len(matches) > 1 and not requested_date:
+        print(red(f"bug 编号跨日期歧义: {bug_id}"))
+        print(yellow("请使用 YYYY-MM-DD/BFxx 或 BFxx@YYYY-MM-DD 指定日期"))
+        for match in matches:
+            print(f"  - {match.parent.name}/{match.name}")
         sys.exit(1)
     return matches[0]
 
@@ -611,10 +625,23 @@ def v_bug_chain(bdir: Path) -> bool:
         else:
             details.append({"ok": True, "msg": "所有方案均被任务覆盖"})
 
+    state = load_json(bdir / "state.json")
+    current_packet = state.get("context_manifest", {}).get("current_packet")
+    if not state.get("checklist", {}).get("context_packet_done"):
+        passed = False
+        details.append({"ok": False, "msg": "state.json: context_packet_done 未完成"})
+    elif not current_packet:
+        passed = False
+        details.append({"ok": False, "msg": "state.json: current_packet 为空"})
+    elif not (bdir / current_packet).exists():
+        passed = False
+        details.append({"ok": False, "msg": f"上下文包不存在: {current_packet}"})
+    else:
+        details.append({"ok": True, "msg": f"上下文包已就绪: {current_packet}"})
+
     print_result("bug_chain", passed, details, "Bug 根因、方案或任务链路未闭合" if not passed else None)
 
     if passed:
-        state = load_json(bdir / "state.json")
         state.setdefault("checklist", {})
         state["checklist"]["fact_chain_done"] = True
         save_bug_state(bdir, state)

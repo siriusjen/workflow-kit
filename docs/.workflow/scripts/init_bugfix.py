@@ -7,6 +7,7 @@ init_bugfix.py — Bug 修复目录初始化脚本 v1.0
   python3 init_bugfix.py --list              # 查看今天的 BF 列表
   python3 init_bugfix.py --list-all          # 查看所有日期的 BF 列表
   python3 init_bugfix.py --recover BF01      # 输出恢复确认卡
+  python3 init_bugfix.py --recover 2026-05-19/BF01
 """
 
 import json
@@ -35,16 +36,19 @@ def bold(t):     return color(t, "1")
 def red(t):      return color(t, "31")
 
 
-def next_bf_number(date_dir: Path) -> str:
-    """扫描当天目录，返回下一个 BF 编号"""
-    if not date_dir.exists():
+def next_bf_number() -> str:
+    """扫描全部日期目录，返回全局下一个 BF 编号。"""
+    if not BUGFIX_ROOT.exists():
         return "BF01"
     existing = []
-    for d in date_dir.iterdir():
-        if d.is_dir():
-            m = re.match(r"BF(\d+)", d.name)
-            if m:
-                existing.append(int(m.group(1)))
+    for date_dir in BUGFIX_ROOT.iterdir():
+        if not date_dir.is_dir():
+            continue
+        for d in date_dir.iterdir():
+            if d.is_dir():
+                m = re.match(r"BF(\d+)", d.name)
+                if m:
+                    existing.append(int(m.group(1)))
     if not existing:
         return "BF01"
     return f"BF{max(existing) + 1:02d}"
@@ -535,7 +539,9 @@ def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
             "test_done": False,
             "release_done": False,
             "retrospective_done": False,
-            "ai_record_done": False
+            "ai_record_done": False,
+            "context_packet_done": False,
+            "fact_chain_done": False
         },
         "current_step_log": {
             "completed_steps": ["目录骨架初始化"],
@@ -614,7 +620,7 @@ def create_bugfix(problem_name: str):
     date_dir = BUGFIX_ROOT / date
     date_dir.mkdir(parents=True, exist_ok=True)
 
-    bf_number = next_bf_number(date_dir)
+    bf_number = next_bf_number()
     bf_dir = date_dir / f"{bf_number}-{problem_name}"
 
     if bf_dir.exists():
@@ -770,12 +776,27 @@ def list_bugfixes(all_dates: bool = False):
 
 
 def recover_bugfix(bug_id: str):
+    requested_date = None
+    requested_id = bug_id
+    if "/" in bug_id:
+        requested_date, requested_id = bug_id.split("/", 1)
+    elif "@" in bug_id:
+        requested_id, requested_date = bug_id.split("@", 1)
+
     matches = []
     for date_dir in sorted([d for d in BUGFIX_ROOT.iterdir() if d.is_dir()], key=lambda d: d.name, reverse=True):
-        for bf_dir in sorted([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(bug_id)], key=lambda d: d.name):
+        if requested_date and date_dir.name != requested_date:
+            continue
+        for bf_dir in sorted([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(requested_id)], key=lambda d: d.name):
             matches.append(bf_dir)
     if not matches:
         print(red(f"找不到 Bug Fix：{bug_id}"))
+        sys.exit(1)
+    if len(matches) > 1 and not requested_date:
+        print(red(f"Bug 编号存在跨日期歧义：{bug_id}"))
+        print(yellow("请使用 YYYY-MM-DD/BFxx 或 BFxx@YYYY-MM-DD 指定日期："))
+        for match in matches:
+            print(f"  - {match.parent.name}/{match.name}")
         sys.exit(1)
 
     bf_dir = matches[0]
@@ -796,7 +817,12 @@ def recover_bugfix(bug_id: str):
     print(f"当前状态: {state.get('current_step', '未设置')}")
     print(f"基线: state.json=已生成 | 00-总览.md=已建立")
     print(f"当前上下文包: {current_packet}")
-    print(f"已完成步骤: {', '.join(completed) or '无'}")
+    def _fmt_step(item):
+        if isinstance(item, dict):
+            return item.get("step") or item.get("action") or str(item)
+        return str(item)
+
+    print(f"已完成步骤: {', '.join(_fmt_step(item) for item in completed) or '无'}")
     print(f"当前进行中步骤: 无")
     print(f"待办步骤: {', '.join(pending) or '无'}")
     print(f"关键结论:")

@@ -36,6 +36,7 @@ DOCS_DIR      = WORKFLOW_DIR.parent
 PROJECT_ROOT  = DOCS_DIR.parent
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
+BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
 
 MAX_SNAPSHOTS = 10
 KNOWN_SUBAGENTS = {
@@ -49,6 +50,10 @@ KNOWN_SUBAGENTS = {
     "测试验证",
     "HTTP接口验收",
     "全链路验证",
+    "Bug根因分析",
+    "Bug修复实现",
+    "Bug回归验证",
+    "Bug独立复核",
 }
 SUBAGENTS_BY_STAGE = {
     "需求确认": {"需求交叉验证"},
@@ -59,6 +64,11 @@ SUBAGENTS_BY_STAGE = {
     "测试验证": {"测试验证"},
     "构建验收": {"HTTP接口验收"},
     "交叉验证": {"全链路验证"},
+    "分析中": {"Bug根因分析", "Bug独立复核"},
+    "修复方案": {"Bug根因分析", "Bug独立复核"},
+    "修复中": {"Bug修复实现", "Bug独立复核"},
+    "验证": {"Bug回归验证", "Bug独立复核"},
+    "验收发布": {"Bug回归验证", "Bug独立复核"},
 }
 
 
@@ -289,6 +299,154 @@ AUTO_TRANSITIONS = {
         "step_total": 3,
         "allowed_next": ["approve-verify (人工锚点④)"],
         "blocked": [],
+        "sets": {"human_approval_required": True, "human_approval_pending": True}
+    },
+}
+
+BUG_APPROVAL_TRANSITIONS = {
+    "approve-rootcause": {
+        "from_stages": ["分析中"],
+        "to_stage": "修复方案",
+        "to_step": "04-解决方案",
+        "step_index": 4,
+        "step_total": 9,
+        "prereqs_checklist": [
+            "problem_description_done",
+            "scope_done",
+            "rootcause_done"
+        ],
+        "sets": {"human_approval_required": False, "human_approval_pending": False},
+        "allowed_next": ["step-start 04-解决方案"],
+        "blocked": ["发布", "关闭 bug"],
+        "anchor": "rootcause",
+        "description": "根因已确认，进入修复方案阶段"
+    },
+    "approve-fix-plan": {
+        "from_stages": ["修复方案"],
+        "to_stage": "修复中",
+        "to_step": "06-执行记录",
+        "step_index": 6,
+        "step_total": 9,
+        "prereqs_checklist": [
+            "solution_done",
+            "task_split_done"
+        ],
+        "sets": {"human_approval_required": False, "human_approval_pending": False},
+        "allowed_next": [
+            "context_packets.py build BFxx B3",
+            "step-start 06-执行记录",
+            "subagent-start Bug修复实现"
+        ],
+        "blocked": ["发布", "关闭 bug"],
+        "anchor": "fix-plan",
+        "description": "修复方案和任务拆解已确认，进入执行修复"
+    },
+    "approve-release": {
+        "from_stages": ["验收发布"],
+        "to_stage": "done",
+        "to_step": "completed",
+        "step_index": 9,
+        "step_total": 9,
+        "prereqs_checklist": [
+            "test_done",
+            "release_done"
+        ],
+        "sets": {"human_approval_required": False, "human_approval_pending": False},
+        "allowed_next": [],
+        "blocked": [],
+        "anchor": "release",
+        "description": "Bug 验证与发布验收通过，流程关闭"
+    },
+    "approve-correction": {
+        "from_stages": ["分析中", "修复方案", "修复中", "验证", "验收发布"],
+        "to_stage": None,
+        "to_step": "human-corrected-resume",
+        "step_index": None,
+        "step_total": None,
+        "sets": {"human_approval_required": False, "human_approval_pending": False},
+        "allowed_next": ["resume-after-correction"],
+        "blocked": [],
+        "anchor": "correction",
+        "description": "人工介入修正 bug 子Agent反复失败的输出"
+    }
+}
+
+BUG_AUTO_TRANSITIONS = {
+    "bug-problem-described": {
+        "from_stages": ["分析中"],
+        "checklist_set": "problem_description_done",
+        "sets_step": "02-环境与影响范围",
+        "step_index": 2,
+        "allowed_next": ["step-start 02-环境与影响范围"],
+        "blocked": ["发布", "关闭 bug"]
+    },
+    "bug-scope-done": {
+        "from_stages": ["分析中"],
+        "checklist_set": "scope_done",
+        "sets_step": "03-根因分析",
+        "step_index": 3,
+        "allowed_next": [
+            "context_packets.py build BFxx B1",
+            "step-start 03-根因分析",
+            "subagent-start Bug根因分析"
+        ],
+        "blocked": ["发布", "关闭 bug"]
+    },
+    "bug-rootcause-done": {
+        "from_stages": ["分析中"],
+        "checklist_set": "rootcause_done",
+        "sets_step": "awaiting-approve-rootcause",
+        "step_index": 3,
+        "allowed_next": ["approve-rootcause"],
+        "blocked": ["写代码", "发布", "关闭 bug"],
+        "sets": {"human_approval_required": True, "human_approval_pending": True}
+    },
+    "bug-solution-done": {
+        "from_stages": ["修复方案"],
+        "checklist_set": "solution_done",
+        "sets_step": "05-任务拆解",
+        "step_index": 5,
+        "allowed_next": ["step-start 05-任务拆解"],
+        "blocked": ["发布", "关闭 bug"]
+    },
+    "bug-task-split-done": {
+        "from_stages": ["修复方案"],
+        "checklist_set": "task_split_done",
+        "sets_step": "awaiting-approve-fix-plan",
+        "step_index": 5,
+        "allowed_next": ["approve-fix-plan"],
+        "blocked": ["发布", "关闭 bug"],
+        "sets": {"human_approval_required": True, "human_approval_pending": True}
+    },
+    "bug-execution-done": {
+        "from_stages": ["修复中"],
+        "checklist_set": "execution_done",
+        "sets_step": "07-测试验证",
+        "to_stage": "验证",
+        "step_index": 7,
+        "allowed_next": [
+            "context_packets.py build BFxx B4",
+            "step-start 07-测试验证",
+            "subagent-start Bug回归验证"
+        ],
+        "blocked": ["发布", "关闭 bug"]
+    },
+    "bug-test-done": {
+        "from_stages": ["验证"],
+        "checklist_set": "test_done",
+        "sets_step": "08-验收发布",
+        "to_stage": "验收发布",
+        "step_index": 8,
+        "allowed_next": ["step-start 08-验收发布"],
+        "blocked": ["关闭 bug"]
+    },
+    "bug-release-done": {
+        "from_stages": ["验收发布"],
+        "checklist_set": "release_done",
+        "sets_step": "awaiting-approve-release",
+        "step_index": 9,
+        "allowed_next": ["approve-release"],
+        "blocked": ["关闭 bug"],
         "sets": {"human_approval_required": True, "human_approval_pending": True}
     },
 }
@@ -615,10 +773,22 @@ def validate_context_packet_for_subagent(fdir: Path, state: dict, data: dict):
         print(red("❌ context_packet 未登记到 state.json.context_manifest.packets。"))
         print(yellow("请重新运行 context_packets.py build 生成当前阶段上下文包。"))
         sys.exit(1)
-    if packet_meta.get("stage") != state.get("current_stage"):
+    packet_stage = packet_meta.get("stage")
+    state_stage = state.get("current_stage")
+    compatible_bug_stages = {
+        "分析中": {"诊断"},
+        "修复方案": {"方案"},
+        "修复中": {"修复"},
+        "验证": {"验证"},
+        "验收发布": {"验证"},
+    }
+    stage_matches = packet_stage == state_stage
+    if workflow_kind(state) == "bugfix":
+        stage_matches = stage_matches or packet_stage in compatible_bug_stages.get(state_stage, set())
+    if not stage_matches:
         print(red("❌ context_packet 阶段与当前 state.current_stage 不一致。"))
-        print(red(f"  上下文包阶段: {packet_meta.get('stage')}"))
-        print(red(f"  当前阶段: {state.get('current_stage')}"))
+        print(red(f"  上下文包阶段: {packet_stage}"))
+        print(red(f"  当前阶段: {state_stage}"))
         sys.exit(1)
 
 
@@ -780,6 +950,58 @@ def find_feature_dir(feature_id: str) -> Path:
         sys.exit(1)
     return matches[0]
 
+
+def find_bugfix_dir(bug_id: str) -> Path:
+    if not BUGFIX_ROOT.exists():
+        print(red(f"{BUGFIX_ROOT.relative_to(PROJECT_ROOT)} 不存在"))
+        sys.exit(1)
+
+    requested_date = None
+    requested_id = bug_id
+    if "/" in bug_id:
+        requested_date, requested_id = bug_id.split("/", 1)
+    elif "@" in bug_id:
+        requested_id, requested_date = bug_id.split("@", 1)
+
+    date_dirs = [
+        d for d in BUGFIX_ROOT.iterdir()
+        if d.is_dir() and (requested_date is None or d.name == requested_date)
+    ]
+    matches = []
+    for date_dir in sorted(date_dirs, key=lambda d: d.name, reverse=True):
+        for d in sorted(date_dir.iterdir(), key=lambda p: p.name):
+            if d.is_dir() and d.name.startswith(requested_id):
+                matches.append(d)
+
+    if not matches:
+        print(red(f"找不到 Bug Fix：{bug_id}"))
+        sys.exit(1)
+    if len(matches) > 1 and requested_date is None:
+        print(red(f"Bug 编号存在跨日期歧义：{bug_id}"))
+        print(yellow("请使用 YYYY-MM-DD/BFxx 或 BFxx@YYYY-MM-DD 指定日期："))
+        for match in matches:
+            print(f"  - {match.parent.name}/{match.name}")
+        sys.exit(1)
+    return matches[0]
+
+
+def find_workflow_dir(workflow_id: str) -> Path:
+    if workflow_id.startswith("BF"):
+        return find_bugfix_dir(workflow_id)
+    return find_feature_dir(workflow_id)
+
+
+def workflow_kind(state: dict) -> str:
+    return state.get("workflow_kind") or ("bugfix" if state.get("bug_id") else "feature")
+
+
+def workflow_id(state: dict) -> str:
+    return state.get("feature_id") or state.get("bug_id") or "UNKNOWN"
+
+
+def workflow_name(state: dict) -> str:
+    return state.get("feature_name") or state.get("bug_name") or "UNKNOWN"
+
 def atomic_write_text(path: Path, content: str):
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(content, encoding="utf-8")
@@ -815,6 +1037,46 @@ def load_state(fdir: Path) -> dict:
         print(red(f"state.json 已损坏且无有效快照可恢复：{err}"))
         sys.exit(1)
 
+
+def sync_readme_bugfix_status(fdir: Path, state: dict):
+    if workflow_kind(state) != "bugfix":
+        return
+    readme = DOCS_DIR / "README.md"
+    if not readme.exists():
+        return
+
+    content = readme.read_text(encoding="utf-8")
+    date = state.get("date") or fdir.parent.name
+    bug_id = state.get("bug_id") or fdir.name.split("-", 1)[0]
+    bug_name = state.get("bug_name") or (fdir.name.split("-", 1)[1] if "-" in fdir.name else fdir.name)
+    status = state.get("current_stage", "未知")
+    rel = str(fdir.relative_to(DOCS_DIR)).replace("\\", "/")
+    new_entry = f"| {date} | {bug_id} | {bug_name} | {status} | [[{rel}/00-总览]] |"
+
+    section_re = re.compile(
+        r"(## 02-Bug Fix 索引\s*\n\n\| 日期 \| 编号 \| 问题名 \| 状态 \| 链接 \|\n"
+        r"\| ---- \| ---- \| ------ \| ---- \| ---- \|\n)(.*?)(\n\n## |\Z)",
+        re.S,
+    )
+    match = section_re.search(content)
+    if not match:
+        return
+    header, body, tail = match.groups()
+    rows = [line for line in body.splitlines() if line.strip().startswith("|")]
+    replaced = False
+    next_rows = []
+    for row in rows:
+        if f"| {date} | {bug_id} |" in row:
+            next_rows.append(new_entry)
+            replaced = True
+        else:
+            next_rows.append(row)
+    if not replaced:
+        next_rows.append(new_entry)
+    replacement = header + "\n".join(next_rows) + tail
+    atomic_write_text(readme, content[:match.start()] + replacement + content[match.end():])
+
+
 def save_state(fdir: Path, state: dict):
     state["last_updated"] = now_iso()
     snap_dir = fdir / ".state-snapshots"
@@ -834,6 +1096,7 @@ def save_state(fdir: Path, state: dict):
         fdir / "state.json",
         json.dumps(state, ensure_ascii=False, indent=2)
     )
+    sync_readme_bugfix_status(fdir, state)
 
 
 def normalize_pending_steps(steps):
@@ -993,7 +1256,10 @@ def update_recovery_card(fdir: Path, state: dict):
     if not f.exists(): return
     content = f.read_text(encoding="utf-8")
 
-    baseline_summary = format_baseline_summary(state)
+    if workflow_kind(state) == "bugfix":
+        baseline_summary = "state.json=已生成 | 00-总览.md=已建立 | 事实锚点.json=按阶段维护"
+    else:
+        baseline_summary = format_baseline_summary(state)
     current_packet = state.get("context_manifest", {}).get("current_packet") or "未生成"
 
     log = ensure_step_log(state)
@@ -1038,7 +1304,7 @@ def update_recovery_card(fdir: Path, state: dict):
     review_summary = summarize_recovery_review(recovery_review)
 
     card = f"""```
-[恢复确认] {state['feature_id']} ({state['feature_name']}) · {state['current_stage']} · step {state.get('step_index',0)}/{state.get('step_total',1)}
+[恢复确认] {workflow_id(state)} ({workflow_name(state)}) · {state['current_stage']} · step {state.get('step_index',0)}/{state.get('step_total',1)}
 当前状态: {state.get('current_step', '未设置')}
 基线: {baseline_summary}
 当前上下文包: {current_packet}
@@ -1123,6 +1389,15 @@ def cmd_step_start(fdir: Path, step_name: str, plan_input: str):
         print(red(f"❌ step-start 被 blocked_actions 阻断: {step_name}"))
         print(red(f"  命中: {blocked_hit}"))
         sys.exit(1)
+
+    if workflow_kind(s) == "bugfix":
+        allowed = s.get("allowed_next_actions") or []
+        if allowed and not any(step_name in action or action in step_name for action in allowed):
+            print(red(f"❌ step-start 不在 allowed_next_actions 中: {step_name}"))
+            print(bold("当前合法下一动作:"))
+            for action in allowed:
+                print(f"  → {action}")
+            sys.exit(1)
 
     current_in_progress = s.get("in_progress_step")
     if current_in_progress:
@@ -1254,7 +1529,7 @@ def cmd_check(fdir: Path):
     log = s.get("current_step_log", {})
 
     print()
-    print(bold(cyan(f"── {s['feature_id']} ({s['feature_name']}) ──────────────")))
+    print(bold(cyan(f"── {workflow_id(s)} ({workflow_name(s)}) ──────────────")))
     print(f"阶段: {bold(stage)}  |  步骤: {step}  [{s.get('step_index',0)}/{s.get('step_total',1)}]")
     print()
     print(bold("✅ 合法下一动作:"))
@@ -1288,12 +1563,17 @@ def cmd_check(fdir: Path):
 
 def cmd_approve(fdir: Path, action: str, note: str = ""):
     s = load_state(fdir)
-    if action not in APPROVAL_TRANSITIONS:
+    if workflow_kind(s) == "bugfix" and s.get("in_progress_step"):
+        print(red("❌ 当前存在未 step-done 的步骤，禁止执行人工锚点。"))
+        print(red(f"  当前进行中: {s['in_progress_step'].get('step')}"))
+        sys.exit(1)
+    transitions = BUG_APPROVAL_TRANSITIONS if workflow_kind(s) == "bugfix" else APPROVAL_TRANSITIONS
+    if action not in transitions:
         print(red(f"未知口令: {action}"))
-        print(yellow(f"合法: {list(APPROVAL_TRANSITIONS.keys())}"))
+        print(yellow(f"合法: {list(transitions.keys())}"))
         sys.exit(1)
 
-    t = APPROVAL_TRANSITIONS[action]
+    t = transitions[action]
 
     if s["current_stage"] not in t["from_stages"]:
         print(red(f"❌ 当前阶段 '{s['current_stage']}' 不允许 '{action}'"))
@@ -1554,18 +1834,23 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
         print(cyan(f"   摘要: {target['summary'][:100]}"))
     if correction_count >= 3:
         print(red(f"❌ {subagent_name} 修正次数已达 {correction_count} 次，需要触发人工锚点。"))
-        print(yellow(f"   命令: python3 docs/.workflow/scripts/stage_gates.py approve {s.get('feature_id')} approve-correction"))
+        print(yellow(f"   命令: python3 docs/.workflow/scripts/stage_gates.py approve {workflow_id(s)} approve-correction"))
 
 
 # ── 命令：auto ────────────────────────────────────────────────────────────────
 
 def cmd_auto(fdir: Path, key: str):
     s = load_state(fdir)
-    if key not in AUTO_TRANSITIONS:
+    if workflow_kind(s) == "bugfix" and s.get("in_progress_step"):
+        print(red("❌ 当前存在未 step-done 的步骤，禁止自动推进状态。"))
+        print(red(f"  当前进行中: {s['in_progress_step'].get('step')}"))
+        sys.exit(1)
+    transitions = BUG_AUTO_TRANSITIONS if workflow_kind(s) == "bugfix" else AUTO_TRANSITIONS
+    if key not in transitions:
         print(red(f"未知自动转移键: {key}"))
         sys.exit(1)
 
-    t = AUTO_TRANSITIONS[key]
+    t = transitions[key]
     old_stage = s["current_stage"]
     if s["current_stage"] not in t["from_stages"]:
         print(red(f"❌ 当前阶段 '{s['current_stage']}' 不匹配 (需要: {t['from_stages']})"))
@@ -1685,10 +1970,11 @@ def cmd_exception(fdir: Path, exc_type: str, reason: str):
 def cmd_status(fdir: Path):
     s = load_state(fdir)
     print()
-    print(bold(f"Feature: {s['feature_id']} — {s['feature_name']}"))
+    print(bold(f"{workflow_kind(s)}: {workflow_id(s)} — {workflow_name(s)}"))
     print(f"  阶段: {s['current_stage']}  步骤: {s['current_step']}")
     print(f"  进度: {s.get('step_index',0)}/{s.get('step_total',1)}")
-    print(f"  模式: {s.get('input_mode','?')}")
+    if workflow_kind(s) == "feature":
+        print(f"  模式: {s.get('input_mode','?')}")
     print(f"  创建: {s.get('created_at','?')[:19]}")
     print(f"  更新: {s.get('last_updated','?')[:19]}")
     in_progress = s.get("in_progress_step")
@@ -1746,10 +2032,10 @@ def main():
 
     cmd = sys.argv[1]
     if len(sys.argv) < 3:
-        print(red("缺少 FID 参数")); sys.exit(1)
+        print(red("缺少 FID/BFID 参数")); sys.exit(1)
 
     fid = sys.argv[2]
-    fdir = find_feature_dir(fid)
+    fdir = find_workflow_dir(fid)
 
     if cmd == "check":
         cmd_check(fdir)

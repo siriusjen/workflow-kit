@@ -1,6 +1,6 @@
 # 02-Bug 修复规范
 
-> **版本**: v1.1 · 2026-05-19
+> **版本**: v1.2 · 2026-05-19
 > **适用范围**: `docs/02-bug-fix/` 目录下所有 Bug 处理流程
 > **使用方式**: 告诉大模型"请按 `docs/.workflow/bug修复规范.md` 来处理我的bug，bug描述如下：..."
 
@@ -13,10 +13,10 @@
 2. 先查清问题：01 问题描述 → 02 影响范围 → 03 根因分析。
 3. 先定方案再动手：04 解决方案 → 05 任务拆解。
 4. 修复前先生成 bug 上下文包：`context_packets.py build BFxx B3`。
-5. 修复过程有证据：06 执行记录、07 测试验证。
-6. 关闭前必须过校验：`validators.py bug_chain BFxx`，再做 08 验收发布 → 09 复盘沉淀 → 10 AI协作记录。
-7. `state.json` 是唯一机器状态；`00-总览.md` 是人工索引入口；`恢复包.md` 是恢复入口。
-8. 写 `state.json` 的命令禁止并行执行，必须顺序运行。
+5. 每个小步必须 `stage_gates.py step-start` → `progress` → `step-done`，未关闭不得进入下一步。
+6. 派 bug 子Agent 前必须 `subagent-start`，返回必须 `subagent-done` 并携带 `dispatch_id`。
+7. 关闭前必须过 `validators.py bug_chain BFxx`、`approve-release`。
+8. `state.json` 是唯一机器状态；写 `state.json` 的命令禁止并行执行。
 ```
 
 ## 最小加载地图（默认按需，不整篇读）
@@ -91,12 +91,12 @@ docs/02-bug-fix/
 - 主 Agent 不得只读 `00-总览.md` 就继续执行，必须先读 `state.json`。
 - 不得执行 `allowed_next_actions` 之外的动作。
 - 任何会写 `state.json` 的命令不得并行执行，包括上下文包生成、校验器和状态门禁更新。
-- README 索引状态必须来自 `state.json`，不得从 markdown 多选模板中猜测。
+- README 索引状态必须来自 `state.json`，不得从 markdown 多选模板中猜测；`stage_gates.py` 更新 bug 状态时必须同步回写 README。
 
 ### 1.2 编号规则
 
 - **日期目录**：`YYYY-MM-DD`，使用问题发现当天的日期
-- **BF 编号**：`BF{nn}`，同一天内顺序递增，从 `BF01` 开始，不复用、不跳号
+- **BF 编号**：`BF{nn}`，在整个 `docs/02-bug-fix/` 下全局递增，从 `BF01` 开始，不复用、不跳号
 - **问题名**：2-6 个中文词，描述问题核心现象，不描述原因
 
 ```
@@ -132,6 +132,7 @@ python3 docs/.workflow/scripts/init_bugfix.py "示例接口保存500错误"
 
 ```bash
 python3 docs/.workflow/scripts/init_bugfix.py --recover BF01
+python3 docs/.workflow/scripts/init_bugfix.py --recover 2026-05-19/BF01
 ```
 
 列表命令必须读取 `state.json`：
@@ -161,6 +162,48 @@ python3 docs/.workflow/scripts/context_packets.py list BF01
 ```
 
 生成后的 `state.json.context_manifest.current_packet` 必须指向最新上下文包。
+
+## 1.4.1 Bug 步骤门禁与子Agent派遣
+
+Bug 流程复用 feature 的 `stage_gates.py`，命令参数可以直接传 `BFxx`。
+
+```bash
+python3 docs/.workflow/scripts/stage_gates.py check BF01
+python3 docs/.workflow/scripts/stage_gates.py step-start BF01 "03-根因分析" '{"goal":"确认根因","expected_outputs":["03-根因分析.md","事实锚点.json"],"done_definition":["根因有证据","事实锚点已更新"],"next_step":"bug-rootcause-done"}'
+python3 docs/.workflow/scripts/stage_gates.py progress BF01 '{"completed_action":"完成日志与代码证据对照","key_conclusions":["根因定位到状态门禁缺失"],"outputs":["03-根因分析.md"],"verification":["人工复核待完成"],"next_step":"补齐事实锚点"}'
+python3 docs/.workflow/scripts/stage_gates.py step-done BF01 "03-根因分析" '{"outputs":["03-根因分析.md","事实锚点.json"],"key_conclusions":["根因已形成事实锚点"],"next_step":"bug-rootcause-done"}'
+python3 docs/.workflow/scripts/stage_gates.py auto BF01 bug-rootcause-done
+python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-rootcause
+```
+
+硬规则：
+
+- `step-start` 的 `goal`、`expected_outputs`、`done_definition`、`next_step` 必须非空。
+- 当前存在 `in_progress_step` 时，禁止再次 `step-start`、禁止 `auto`、禁止 `approve`。
+- `progress` 必须记录可恢复的小动作、关键结论和下一步。
+- `step-done` 必须能找到对应未闭合的 `step-start`。
+- `subagent-start` 必须校验 `context_packet` 存在、等于 `state.json.context_manifest.current_packet`，且登记在 `context_manifest.packets`。
+- `subagent-start` 必须提供非空 `input_paths`、`output_paths`、`instruction`；`input_paths` 必须存在。
+- `subagent-done` 必须携带 `dispatch_id`，并校验 `output_paths` 已存在。
+
+Bug 专用子Agent：
+
+| 子Agent | 阶段 | 主要输出 |
+|---------|------|----------|
+| Bug根因分析 | 分析中 | `03-根因分析.md`、`事实锚点.json` |
+| Bug独立复核 | 分析中 / 修复方案 / 修复中 / 验证 | 闭环复核摘要或 `10-AI协作记录.md` |
+| Bug修复实现 | 修复中 | 代码/规范改动、`06-执行记录.md` |
+| Bug回归验证 | 验证 / 验收发布 | `07-测试验证.md` |
+
+人工锚点：
+
+```bash
+python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-rootcause
+python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-fix-plan
+python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-release
+```
+
+未通过根因锚点不得进入方案确认；未通过方案锚点不得进入修复；未通过发布锚点不得关闭 bug。
 
 ---
 
@@ -666,10 +709,11 @@ bug 描述如下：
 大模型在处理 bug 时会自动调用此脚本创建目录骨架。脚本位于 `docs/.workflow/scripts/init_bugfix.py`，自动完成：
 
 - 创建今天的日期目录（已存在则复用）
-- 扫描当天已有 BFxx 编号，自动递增
+- 扫描全部日期目录已有 BFxx 编号，全局自动递增
 - 创建 10 个子文档，每个文档有对应模板内容
 - 在 `docs/README.md` 中更新 Bug 索引
+- `--recover BFxx` 如遇跨日期重复编号必须提示使用 `YYYY-MM-DD/BFxx` 或 `BFxx@YYYY-MM-DD`
 
 ---
 
-*Bug 修复规范 v1.0 · 测试架构师视角 · 2026-05-15*
+*Bug 修复规范 v1.2 · 测试架构师视角 · 2026-05-19*
