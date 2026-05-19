@@ -1384,20 +1384,22 @@ def cmd_step_start(fdir: Path, step_name: str, plan_input: str):
             print(f"  → {action}")
         sys.exit(1)
 
-    blocked_hit = _step_name_violates_blocked(step_name, s.get("blocked_actions", []))
-    if blocked_hit:
-        print(red(f"❌ step-start 被 blocked_actions 阻断: {step_name}"))
-        print(red(f"  命中: {blocked_hit}"))
-        sys.exit(1)
-
+    step_explicitly_allowed = False
     if workflow_kind(s) == "bugfix":
         allowed = s.get("allowed_next_actions") or []
-        if allowed and not any(step_name in action or action in step_name for action in allowed):
+        step_explicitly_allowed = bool(allowed and any(step_name in action or action in step_name for action in allowed))
+        if allowed and not step_explicitly_allowed:
             print(red(f"❌ step-start 不在 allowed_next_actions 中: {step_name}"))
             print(bold("当前合法下一动作:"))
             for action in allowed:
                 print(f"  → {action}")
             sys.exit(1)
+
+    blocked_hit = None if step_explicitly_allowed else _step_name_violates_blocked(step_name, s.get("blocked_actions", []))
+    if blocked_hit:
+        print(red(f"❌ step-start 被 blocked_actions 阻断: {step_name}"))
+        print(red(f"  命中: {blocked_hit}"))
+        sys.exit(1)
 
     current_in_progress = s.get("in_progress_step")
     if current_in_progress:
