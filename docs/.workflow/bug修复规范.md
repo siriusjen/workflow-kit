@@ -195,6 +195,7 @@ python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-rootcause
 - 当前存在 `in_progress_step` 时，禁止再次 `step-start`、禁止 `auto`、禁止 `approve`。
 - `progress` 必须记录可恢复的小动作、关键结论和下一步。
 - `step-done` 必须能找到对应未闭合的 `step-start`。
+- Bug 标准步骤 `01` 到 `10` 的 `step-done` 必须同步置位 `state.json.checklist`，否则机器状态不可信。
 - `subagent-start` 必须校验 `context_packet` 存在、等于 `state.json.context_manifest.current_packet`，且登记在 `context_manifest.packets`。
 - `subagent-start` 必须提供非空 `input_paths`、`output_paths`、`instruction`；`input_paths` 必须存在。
 - `subagent-done` 必须携带 `dispatch_id`，并校验 `output_paths` 已存在。

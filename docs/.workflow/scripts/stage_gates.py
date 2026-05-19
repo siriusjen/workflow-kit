@@ -451,6 +451,19 @@ BUG_AUTO_TRANSITIONS = {
     },
 }
 
+BUG_STEP_CHECKLIST_BY_NAME = {
+    "01-问题描述": "problem_description_done",
+    "02-环境与影响范围": "scope_done",
+    "03-根因分析": "rootcause_done",
+    "04-解决方案": "solution_done",
+    "05-任务拆解": "task_split_done",
+    "06-执行记录": "execution_done",
+    "07-测试验证": "test_done",
+    "08-验收发布": "release_done",
+    "09-复盘与沉淀": "retrospective_done",
+    "10-AI协作记录": "ai_record_done",
+}
+
 
 # ── 工具 ──────────────────────────────────────────────────────────────────────
 
@@ -1699,6 +1712,10 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
     mark_in_progress_review(s, build_recovery_review_for_outputs(fdir, outputs, done_definition))
     append_completed_step(s, entry)
     mark_started_step_completed(s, step_name, entry["completed_at"], entry["status"])
+    if workflow_kind(s) == "bugfix" and entry["status"] == "done":
+        checklist_key = BUG_STEP_CHECKLIST_BY_NAME.get(step_name)
+        if checklist_key:
+            s.setdefault("checklist", {})[checklist_key] = True
     pending = [p for p in log.get("pending_steps", []) if p != step_name]
     if entry.get("next_step"):
         pending.append(entry["next_step"])
