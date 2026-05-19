@@ -10,13 +10,18 @@
 
 ```text
 1. 先建骨架：运行 init_bugfix.py，必须生成 `state.json` 和 `恢复包.md`。
-2. 先查清问题：01 问题描述 → 02 影响范围 → 03 根因分析。
-3. 先定方案再动手：04 解决方案 → 05 任务拆解。
-4. 修复前先生成 bug 上下文包：`context_packets.py build BFxx B3`。
-5. 每个小步必须 `stage_gates.py step-start` → `progress` → `step-done`，未关闭不得进入下一步。
-6. 派 bug 子Agent 前必须 `subagent-start`，返回必须 `subagent-done` 并携带 `dispatch_id`。
-7. 关闭前必须过 `validators.py bug_chain BFxx`、`approve-release`。
-8. `state.json` 是唯一机器状态；写 `state.json` 的命令禁止并行执行。
+2. 第一动作必须先建本次 bug 的目录和总览，不允许先读代码。
+3. 先查清问题：01 问题描述 → 02 影响范围 → 03 根因分析。
+4. 先定方案再动手：04 解决方案 → 05 任务拆解。
+5. 排查期间的脚本、SQL、curl、导出数据、截图、日志摘录都要放进 `11-排查附件/`。
+6. 每一步开始前先对照规范，确认当前允许动作。
+7. 每一步结束时同时输出 bug 结论和规范检查结论。
+8. 发现规范缺口时，先写进流程文档，再继续后续排查。
+9. 修复前先生成 bug 上下文包：`context_packets.py build BFxx B3`。
+10. 每个小步必须 `stage_gates.py step-start` → `progress` → `step-done`，未关闭不得进入下一步。
+11. 派 bug 子Agent前必须 `subagent-start`，返回必须 `subagent-done` 并携带 `dispatch_id`。
+12. 关闭前必须过 `validators.py bug_chain BFxx`、`approve-release`。
+13. `state.json` 是唯一机器状态；写 `state.json` 的命令禁止并行执行。
 ```
 
 ## 最小加载地图（默认按需，不整篇读）
@@ -29,6 +34,7 @@
 | 制定修复方案 | `2.5` + `2.6` | `2.3` / `2.4` |
 | 执行与验证 | 当前 B 阶段上下文包 + `2.7` + `2.8` | `2.5` / `2.6` |
 | 发布关闭 / 复盘 | `2.9` + `2.10` + `2.11` | 其他小节 |
+| 归档排查附件 | `11-排查附件/00-附件索引.md` + 当前阶段文档 | 临时脚本输出仅可过渡使用 |
 
 默认规则：
 - Bug 处理 Agent 默认先读 `00-总览.md` 与当前阶段对应小节，不整篇读取本文。
@@ -57,6 +63,8 @@ docs/02-bug-fix/
         ├── 08-验收发布.md
         ├── 09-复盘与沉淀.md
         ├── 10-AI协作记录.md
+        ├── 11-排查附件/
+        │   └── 00-附件索引.md
         ├── 事实锚点.json             ← 根因→方案→任务闭环锚点
         └── 06-上下文包/              ← bug 阶段最小上下文包
 ```
@@ -92,6 +100,9 @@ docs/02-bug-fix/
 - 不得执行 `allowed_next_actions` 之外的动作。
 - 任何会写 `state.json` 的命令不得并行执行，包括上下文包生成、校验器和状态门禁更新。
 - README 索引状态必须来自 `state.json`，不得从 markdown 多选模板中猜测；`stage_gates.py` 更新 bug 状态时必须同步回写 README。
+- 每一步结束时的记录必须同时包含两类结论：`bug 结论` 和 `规范检查结论`；缺任一项不得 `step-done`。
+- 一旦发现规范缺口，必须先写入 `09-复盘与沉淀.md` 或当前阶段的执行记录，再继续后续排查。
+- 排查材料不得长期停留在 `/private/tmp` 或个人临时目录，必须在本次 bug 目录的 `11-排查附件/` 中留存副本并在执行记录中登记路径。
 
 ### 1.2 编号规则
 

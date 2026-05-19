@@ -98,7 +98,7 @@ def tpl_overview(bf_number: str, problem_name: str, date: str) -> str:
 - [[01-问题描述]] · [[02-环境与影响范围]] · [[03-根因分析]]
 - [[04-解决方案]] · [[05-任务拆解]] · [[06-执行记录]]
 - [[07-测试验证]] · [[08-验收发布]] · [[09-复盘与沉淀]]
-- [[10-AI协作记录]]
+- [[10-AI协作记录]] · [[11-排查附件/00-附件索引]]
 
 ---
 
@@ -501,6 +501,36 @@ def tpl_10_ai(bf_number: str, problem_name: str) -> str:
 """
 
 
+def tpl_11_attachments(bf_number: str, problem_name: str) -> str:
+    return f"""# 00-附件索引
+
+> **所属**: {bf_number}-{problem_name}
+> **状态**: 进行中
+
+---
+
+## 归档规则
+
+- 本目录统一保存本次 bug 排查过程中产生的 SQL、curl、shell、Python、截图、日志摘录、导出数据和响应样本。
+- 临时执行文件可短暂放在 `/private/tmp`，但在 `step-done` 前必须复制回本目录并在执行记录中登记。
+- 目录内只保留可复盘的事实材料，不放口头结论。
+
+## 附件清单
+
+| 时间 | 类型 | 文件名 | 说明 | 来源步骤 |
+|------|------|--------|------|---------|
+| | SQL | | | |
+| | curl | | | |
+| | 日志 | | | |
+| | 数据导出 | | | |
+| | 截图 | | | |
+
+## 当前结论
+
+- 待填写
+"""
+
+
 def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
     ts = now_iso()
     return {
@@ -518,7 +548,8 @@ def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
         "step_total": 9,
         "allowed_next_actions": [
             "填写 01-问题描述",
-            "读取 恢复包.md"
+            "读取 恢复包.md",
+            "整理排查附件到 11-排查附件"
         ],
         "blocked_actions": [
             "关闭 bug",
@@ -630,8 +661,10 @@ def create_bugfix(problem_name: str):
     bf_dir.mkdir(parents=True)
     (bf_dir / "06-上下文包").mkdir(parents=True, exist_ok=True)
     (bf_dir / "06-上下文包" / ".gitkeep").write_text("", encoding="utf-8")
+    (bf_dir / "11-排查附件").mkdir(parents=True, exist_ok=True)
+    (bf_dir / "11-排查附件" / ".gitkeep").write_text("", encoding="utf-8")
 
-    # 生成 10 个子文档
+    # 生成标准文档与排查附件索引
     files = {
         "state.json": build_bug_state(bf_number, problem_name, date),
         "00-总览.md":           tpl_overview(bf_number, problem_name, date),
@@ -645,6 +678,7 @@ def create_bugfix(problem_name: str):
         "08-验收发布.md":       tpl_08_release(bf_number, problem_name),
         "09-复盘与沉淀.md":     tpl_09_retrospective(bf_number, problem_name),
         "10-AI协作记录.md":     tpl_10_ai(bf_number, problem_name),
+        "11-排查附件/00-附件索引.md": tpl_11_attachments(bf_number, problem_name),
         "恢复包.md":             tpl_bug_recovery(bf_number, problem_name),
         "事实锚点.json":          json.dumps({
             "_comment": "Bug 根因→方案→任务事实链锚点；validators.py bug_chain 读取",
