@@ -29,6 +29,7 @@ DOCS_DIR = WORKFLOW_DIR.parent
 PROJECT_ROOT = DOCS_DIR.parent
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
+BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
 MAX_SNAPSHOTS = 10
 
 
@@ -220,6 +221,91 @@ STAGE_DEFS = {
     }
 }
 
+BUG_STAGE_DEFS = {
+    "B1": {
+        "name": "诊断",
+        "packet": "上下文包-B1-诊断.md",
+        "must_read": [
+            "state.json",
+            "00-总览.md",
+            "01-问题描述.md",
+            "02-环境与影响范围.md",
+            "03-根因分析.md"
+        ],
+        "on_demand": [
+            "日志和截图：只读取可复现问题所需的最小片段",
+            "相关代码：先用 rg 定位，再读取根因相关函数或配置片段"
+        ],
+        "outputs": [
+            "03-根因分析.md",
+            "事实锚点.json"
+        ]
+    },
+    "B2": {
+        "name": "方案",
+        "packet": "上下文包-B2-方案.md",
+        "must_read": [
+            "state.json",
+            "00-总览.md",
+            "03-根因分析.md",
+            "04-解决方案.md",
+            "事实锚点.json"
+        ],
+        "on_demand": [
+            "同类流程或 feature 规范：只读取与状态机、门禁、恢复直接相关的章节",
+            "脚本源码：只读取待修改函数及其调用入口"
+        ],
+        "outputs": [
+            "04-解决方案.md",
+            "05-任务拆解.md",
+            "事实锚点.json"
+        ]
+    },
+    "B3": {
+        "name": "修复",
+        "packet": "上下文包-B3-修复.md",
+        "must_read": [
+            "state.json",
+            "00-总览.md",
+            "03-根因分析.md",
+            "04-解决方案.md",
+            "05-任务拆解.md",
+            "06-执行记录.md",
+            "事实锚点.json"
+        ],
+        "on_demand": [
+            "目标脚本：只读取当前 BT 相关函数",
+            "测试输出：只记录命令、退出码和关键失败摘要"
+        ],
+        "outputs": [
+            "代码或规范修改",
+            "06-执行记录.md",
+            "07-测试验证.md"
+        ]
+    },
+    "B4": {
+        "name": "验证",
+        "packet": "上下文包-B4-验证.md",
+        "must_read": [
+            "state.json",
+            "00-总览.md",
+            "05-任务拆解.md",
+            "06-执行记录.md",
+            "07-测试验证.md",
+            "事实锚点.json"
+        ],
+        "on_demand": [
+            "完整 diff：只在验证任务覆盖时读取",
+            "workflow-kit 文件：只在同步验证时读取对应路径"
+        ],
+        "outputs": [
+            "07-测试验证.md",
+            "08-验收发布.md",
+            "09-复盘与沉淀.md"
+        ]
+    }
+}
+
 ALIASES = {
     "需求确认": "S2",
     "技术方案": "S3",
@@ -230,6 +316,15 @@ ALIASES = {
     "构建验收": "S8",
     "交叉验证": "S9",
     "验收发布": "S10",
+}
+
+BUG_ALIASES = {
+    "诊断": "B1",
+    "分析": "B1",
+    "方案": "B2",
+    "修复": "B3",
+    "验证": "B4",
+    "验收": "B4",
 }
 
 
@@ -254,6 +349,19 @@ def find_feature_dir(fid: str) -> Path:
     matches = [d for d in root.iterdir() if d.is_dir() and d.name.startswith(fid)]
     if not matches:
         print(f"找不到 feature: {fid}", file=sys.stderr)
+        sys.exit(1)
+    return matches[0]
+
+
+def find_bugfix_dir(bug_id: str) -> Path:
+    if not BUGFIX_ROOT.exists():
+        print(f"找不到 bugfix 根目录: {BUGFIX_ROOT}", file=sys.stderr)
+        sys.exit(1)
+    matches = []
+    for date_dir in sorted([d for d in BUGFIX_ROOT.iterdir() if d.is_dir()], key=lambda p: p.name, reverse=True):
+        matches.extend([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(bug_id)])
+    if not matches:
+        print(f"找不到 bugfix: {bug_id}", file=sys.stderr)
         sys.exit(1)
     return matches[0]
 
@@ -399,11 +507,29 @@ def key_state_summary(state: dict):
     }
 
 
+def key_bug_state_summary(state: dict):
+    log = state.get("current_step_log", {})
+    return {
+        "bug_id": state.get("bug_id"),
+        "bug_name": state.get("bug_name"),
+        "current_stage": state.get("current_stage"),
+        "current_step": state.get("current_step"),
+        "allowed_next_actions": state.get("allowed_next_actions", []),
+        "blocked_actions": state.get("blocked_actions", []),
+        "checklist": state.get("checklist", {}),
+        "recent_completed_steps": compact_list(log.get("completed_steps", []), 8),
+        "pending_steps": compact_list(log.get("pending_steps", []), 8)
+    }
+
+
 def render_json_block(data) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
 def build_packet(fid: str, stage: str, task: str | None = None):
+    if fid.upper().startswith("BF"):
+        return build_bug_packet(fid, stage)
+
     stage_key = ALIASES.get(stage, stage.upper())
     if stage_key not in STAGE_DEFS:
         print(f"未知阶段: {stage}. 可选: {', '.join(STAGE_DEFS)}", file=sys.stderr)
@@ -518,7 +644,106 @@ def build_packet(fid: str, stage: str, task: str | None = None):
         print(f"   任务: {task}")
 
 
+def build_bug_packet(bug_id: str, stage: str):
+    stage_key = BUG_ALIASES.get(stage, stage.upper())
+    if stage_key not in BUG_STAGE_DEFS:
+        print(f"未知 bug 阶段: {stage}. 可选: {', '.join(BUG_STAGE_DEFS)}", file=sys.stderr)
+        sys.exit(1)
+
+    bdir = find_bugfix_dir(bug_id)
+    state_path = bdir / "state.json"
+    state = load_json(state_path, {})
+    stage_def = BUG_STAGE_DEFS[stage_key]
+    packet_dir = bdir / "06-上下文包"
+    packet_path = packet_dir / stage_def["packet"]
+
+    generated_at = now_iso()
+    content = f"""# {state.get('bug_id', bug_id)}-{state.get('bug_name', '')} {stage_def['name']}上下文包
+
+> **生成时间**: {generated_at}
+> **阶段**: {stage_key} / {stage_def['name']}
+> **规则**: 本文件是 bug 子Agent 和主Agent 的最小入口。先读本包，再按“必须读取清单”读取精确路径；禁止一次性加载无关全文。
+
+---
+
+#context-packet
+#bugfix/{state.get('bug_id', bug_id)}
+#stage/{stage_def['name']}
+
+## 1. 加载策略
+
+1. 先读本上下文包。
+2. 只读取“必须读取清单”中的路径。
+3. 需要额外文件时，先用 `rg` 定位，再读取最小片段，并在返回摘要中说明原因。
+4. 禁止加载完整代码库、完整历史会话、完整测试日志。
+5. 子Agent 返回主Agent 时只返回结构化摘要、输出路径、关键结论和阻塞项。
+
+## 2. 状态摘要
+
+```json
+{render_json_block(key_bug_state_summary(state))}
+```
+
+## 3. 必须读取清单（精确路径）
+"""
+    for item in expand_must_read_items(bdir, stage_def["must_read"], None):
+        content += f"\n- `{item}`"
+
+    content += "\n\n## 4. 按需加载清单\n"
+    for item in stage_def["on_demand"]:
+        content += f"\n- {item}"
+
+    content += "\n\n## 5. 预期输出\n"
+    for item in stage_def["outputs"]:
+        content += f"\n- `{item}`"
+
+    content += "\n\n## 6. 最近产物索引\n\n"
+    indexes = {
+        "bug文档": latest_files(bdir, "*.md", 12),
+        "机器状态": latest_files(bdir, "*.json", 12),
+        "上下文包": latest_files(bdir, "06-上下文包/*", 8),
+    }
+    content += "```json\n"
+    content += render_json_block(indexes)
+    content += "\n```\n"
+
+    content += "\n## 7. 禁止事项\n\n"
+    content += "- 不要把本包当成完整事实来源；事实以列出的根因、方案、任务和执行记录为准。\n"
+    content += "- 不要跳过 `state.json` 的 allowed_next_actions。\n"
+    content += "- 不要把推测写入测试记录或验收发布；必须写可验证证据。\n"
+
+    atomic_write(packet_path, content)
+
+    state.setdefault("context_manifest", {})
+    state["context_manifest"]["current_packet"] = str(packet_path.relative_to(bdir))
+    packets = state["context_manifest"].setdefault("packets", [])
+    packets = [p for p in packets if p.get("path") != str(packet_path.relative_to(bdir))]
+    packets.append({
+        "stage": stage_def["name"],
+        "stage_key": stage_key,
+        "path": str(packet_path.relative_to(bdir)),
+        "updated_at": generated_at
+    })
+    state["context_manifest"]["packets"] = packets[-20:]
+    state["checklist"] = state.get("checklist", {})
+    state["checklist"]["context_packet_done"] = True
+    state["last_updated"] = generated_at
+    save_state_with_snapshot(bdir, state)
+
+    print(f"✅ 已生成 bug 上下文包: {packet_path.relative_to(PROJECT_ROOT)}")
+    print(f"   阶段: {stage_key} / {stage_def['name']}")
+
+
 def list_packets(fid: str):
+    if fid.upper().startswith("BF"):
+        bdir = find_bugfix_dir(fid)
+        state = load_json(bdir / "state.json", {})
+        manifest = state.get("context_manifest", {})
+        print(f"当前上下文包: {manifest.get('current_packet') or '无'}")
+        for item in manifest.get("packets", []):
+            print(f"- {item.get('stage_key')} {item.get('stage')}: {item.get('path')} @ {item.get('updated_at')}")
+        return
+
     fdir = find_feature_dir(fid)
     state = load_json(fdir / "state.json", {})
     manifest = state.get("context_manifest", {})

@@ -32,6 +32,7 @@ DOCS_DIR      = WORKFLOW_DIR.parent
 PROJECT_ROOT  = DOCS_DIR.parent
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
+BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
 
 REQUIRED_DIMENSIONS = ["main_flow", "exception_flow", "boundary", "permission", "acceptance"]
 DIMENSION_LABELS = {
@@ -76,6 +77,19 @@ def find_feature_dir(fid: str) -> Path:
         print(red(f"找不到 feature: {fid}")); sys.exit(1)
     return matches[0]
 
+
+def find_bugfix_dir(bug_id: str) -> Path:
+    if not BUGFIX_ROOT.exists():
+        print(red(f"找不到 bugfix 根目录: {BUGFIX_ROOT}"))
+        sys.exit(1)
+    matches = []
+    for date_dir in sorted([d for d in BUGFIX_ROOT.iterdir() if d.is_dir()], key=lambda p: p.name, reverse=True):
+        matches.extend([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(bug_id)])
+    if not matches:
+        print(red(f"找不到 bugfix: {bug_id}"))
+        sys.exit(1)
+    return matches[0]
+
 def load_json(p: Path) -> dict:
     if not p.exists(): return {}
     try: return json.loads(p.read_text(encoding="utf-8"))
@@ -83,6 +97,11 @@ def load_json(p: Path) -> dict:
 
 def save_json(p: Path, d: dict):
     p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def save_bug_state(bdir: Path, state: dict):
+    state["last_updated"] = now_iso()
+    save_json(bdir / "state.json", state)
 
 
 def normalize_mapping_values(value):
@@ -529,6 +548,80 @@ def v_rdtv_closure(fdir: Path) -> bool:
     return passed
 
 
+# ── Bug 校验器: 根因→方案→任务闭环 ───────────────────────────────────────────
+
+def v_bug_chain(bdir: Path) -> bool:
+    print(bold("\n── Bug 校验器: 根因→方案→任务闭环 ──"))
+
+    required_docs = [
+        "01-问题描述.md",
+        "02-环境与影响范围.md",
+        "03-根因分析.md",
+        "04-解决方案.md",
+        "05-任务拆解.md",
+        "06-执行记录.md",
+        "state.json",
+    ]
+    details = []
+    passed = True
+    for rel in required_docs:
+        path = bdir / rel
+        ok = path.exists() and path.stat().st_size > 0
+        details.append({"ok": ok, "msg": f"{rel}: {'存在' if ok else '缺失或为空'}"})
+        if not ok:
+            passed = False
+
+    anchor_path = bdir / "事实锚点.json"
+    anchors = load_json(anchor_path)
+    if not anchors:
+        details.append({"ok": False, "msg": "事实锚点.json: 缺失或 JSON 无效"})
+        passed = False
+    else:
+        rootcause_ids = {
+            str(item.get("id"))
+            for item in anchors.get("rootcause_anchors", [])
+            if item.get("id")
+        }
+        solution_ids = {
+            str(item.get("rootcause_id"))
+            for item in anchors.get("solution_mappings", [])
+            if item.get("rootcause_id") and item.get("status") == "covered"
+        }
+        missing_solution = sorted(rootcause_ids - solution_ids)
+        if missing_solution:
+            passed = False
+            details.append({"ok": False, "msg": f"根因未被方案覆盖: {missing_solution}"})
+        else:
+            details.append({"ok": True, "msg": "所有根因均被方案覆盖"})
+
+        solution_refs = {
+            str(item.get("solution_ref"))
+            for item in anchors.get("solution_mappings", [])
+            if item.get("solution_ref")
+        }
+        task_refs = {
+            str(item.get("solution_ref"))
+            for item in anchors.get("task_mappings", [])
+            if item.get("solution_ref") and item.get("status") == "covered"
+        }
+        missing_tasks = sorted(solution_refs - task_refs)
+        if missing_tasks:
+            passed = False
+            details.append({"ok": False, "msg": f"方案未被任务覆盖: {missing_tasks}"})
+        else:
+            details.append({"ok": True, "msg": "所有方案均被任务覆盖"})
+
+    print_result("bug_chain", passed, details, "Bug 根因、方案或任务链路未闭合" if not passed else None)
+
+    if passed:
+        state = load_json(bdir / "state.json")
+        state.setdefault("checklist", {})
+        state["checklist"]["fact_chain_done"] = True
+        save_bug_state(bdir, state)
+
+    return passed
+
+
 # ── 入口 ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -537,6 +630,17 @@ def main():
 
     v = sys.argv[1]
     fid = sys.argv[2]
+    if fid.upper().startswith("BF"):
+        bdir = find_bugfix_dir(fid)
+        if v == "bug_chain":
+            sys.exit(0 if v_bug_chain(bdir) else 1)
+        elif v == "all":
+            sys.exit(0 if v_bug_chain(bdir) else 1)
+        else:
+            print(red(f"Bug 流程不支持校验器: {v}"))
+            print(yellow("可用: bug_chain, all"))
+            sys.exit(1)
+
     fdir = find_feature_dir(fid)
 
     if v == "req_coverage":

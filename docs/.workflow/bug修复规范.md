@@ -1,6 +1,6 @@
 # 02-Bug 修复规范
 
-> **版本**: v1.0 · 2026-05-15
+> **版本**: v1.1 · 2026-05-19
 > **适用范围**: `docs/02-bug-fix/` 目录下所有 Bug 处理流程
 > **使用方式**: 告诉大模型"请按 `docs/.workflow/bug修复规范.md` 来处理我的bug，bug描述如下：..."
 
@@ -9,12 +9,14 @@
 ## 速查卡（Bug 会话默认先读，15行以内）
 
 ```text
-1. 先建骨架：运行 init_bugfix.py。
+1. 先建骨架：运行 init_bugfix.py，必须生成 `state.json` 和 `恢复包.md`。
 2. 先查清问题：01 问题描述 → 02 影响范围 → 03 根因分析。
 3. 先定方案再动手：04 解决方案 → 05 任务拆解。
-4. 修复过程有证据：06 执行记录、07 测试验证。
-5. 关闭前要能发布、能回滚、能复盘：08 验收发布 → 09 复盘沉淀 → 10 AI协作记录。
-6. `00-总览.md` 是 Bug 的索引入口，始终优先读取。
+4. 修复前先生成 bug 上下文包：`context_packets.py build BFxx B3`。
+5. 修复过程有证据：06 执行记录、07 测试验证。
+6. 关闭前必须过校验：`validators.py bug_chain BFxx`，再做 08 验收发布 → 09 复盘沉淀 → 10 AI协作记录。
+7. `state.json` 是唯一机器状态；`00-总览.md` 是人工索引入口；`恢复包.md` 是恢复入口。
+8. 写 `state.json` 的命令禁止并行执行，必须顺序运行。
 ```
 
 ## 最小加载地图（默认按需，不整篇读）
@@ -22,10 +24,10 @@
 | 当前任务 | 默认先读 | 只有需要时再读 |
 |----------|----------|----------------|
 | 新建 Bug | 速查卡 + `1. 目录结构规范` + `4.1 启动 Bug 处理` | `5. init_bugfix.py 脚本规范` |
-| 恢复处理中断 | `00-总览.md` + `4.2 会话中断后恢复` | 对应阶段文档模板 |
+| 恢复处理中断 | `恢复包.md` + `state.json` + `00-总览.md` | 对应阶段文档模板 |
 | 记录问题 / 影响 / 根因 | `2.2`、`2.3`、`2.4` 对应小节 | `3. 严重程度分级` |
 | 制定修复方案 | `2.5` + `2.6` | `2.3` / `2.4` |
-| 执行与验证 | `2.7` + `2.8` | `2.5` / `2.6` |
+| 执行与验证 | 当前 B 阶段上下文包 + `2.7` + `2.8` | `2.5` / `2.6` |
 | 发布关闭 / 复盘 | `2.9` + `2.10` + `2.11` | 其他小节 |
 
 默认规则：
@@ -43,6 +45,8 @@ docs/02-bug-fix/
 └── {YYYY-MM-DD}/                     ← 一级：日期目录
     └── {BFxx}-{问题名}/              ← 二级：Bug 目录
         ├── 00-总览.md                ← 必读入口（最后完成）
+        ├── state.json                ← 唯一机器状态索引
+        ├── 恢复包.md                 ← 会话恢复入口
         ├── 01-问题描述.md
         ├── 02-环境与影响范围.md
         ├── 03-根因分析.md
@@ -52,8 +56,42 @@ docs/02-bug-fix/
         ├── 07-测试验证.md
         ├── 08-验收发布.md
         ├── 09-复盘与沉淀.md
-        └── 10-AI协作记录.md
+        ├── 10-AI协作记录.md
+        ├── 事实锚点.json             ← 根因→方案→任务闭环锚点
+        └── 06-上下文包/              ← bug 阶段最小上下文包
 ```
+
+### 1.1.1 机器状态文件
+
+每个 bug 目录必须包含 `state.json`，它是唯一权威机器状态文件。
+
+最低字段：
+
+```json
+{
+  "workflow_kind": "bugfix",
+  "bug_id": "BF01",
+  "bug_name": "问题名",
+  "current_stage": "分析中 / 修复中 / 验证中 / 已关闭",
+  "current_step": "06-执行记录",
+  "allowed_next_actions": [],
+  "blocked_actions": [],
+  "checklist": {},
+  "context_manifest": {
+    "current_packet": null,
+    "packets": []
+  },
+  "subagent_log": [],
+  "exception_log": []
+}
+```
+
+强制规则：
+
+- 主 Agent 不得只读 `00-总览.md` 就继续执行，必须先读 `state.json`。
+- 不得执行 `allowed_next_actions` 之外的动作。
+- 任何会写 `state.json` 的命令不得并行执行，包括上下文包生成、校验器和状态门禁更新。
+- README 索引状态必须来自 `state.json`，不得从 markdown 多选模板中猜测。
 
 ### 1.2 编号规则
 
@@ -82,6 +120,66 @@ python3 docs/.workflow/scripts/init_bugfix.py "问题名称"
 # 示例
 python3 docs/.workflow/scripts/init_bugfix.py "示例接口保存500错误"
 ```
+
+脚本必须同时生成：
+
+- `state.json`
+- `恢复包.md`
+- 10 个标准阶段文档
+- README 中的 `02-Bug Fix 索引` 行
+
+恢复命令：
+
+```bash
+python3 docs/.workflow/scripts/init_bugfix.py --recover BF01
+```
+
+列表命令必须读取 `state.json`：
+
+```bash
+python3 docs/.workflow/scripts/init_bugfix.py --list-all
+```
+
+---
+
+## 1.4 Bug 阶段与上下文包
+
+Bug 流程使用 B 阶段，不复用 feature 的 S 阶段编号。
+
+| 阶段 | 名称 | 典型输入 | 典型输出 |
+|------|------|----------|----------|
+| B1 | 诊断 | 01-问题描述、02-环境与影响范围、03-根因分析 | `03-根因分析.md`、`事实锚点.json` |
+| B2 | 方案 | 03-根因分析、04-解决方案、事实锚点 | `04-解决方案.md`、`05-任务拆解.md` |
+| B3 | 修复 | 03-05 文档、06-执行记录、事实锚点 | 代码/规范改动、`06-执行记录.md` |
+| B4 | 验证 | 05-任务拆解、06-执行记录、07-测试验证 | `07-测试验证.md`、`08-验收发布.md` |
+
+每个阶段开始前必须生成上下文包：
+
+```bash
+python3 docs/.workflow/scripts/context_packets.py build BF01 B3
+python3 docs/.workflow/scripts/context_packets.py list BF01
+```
+
+生成后的 `state.json.context_manifest.current_packet` 必须指向最新上下文包。
+
+---
+
+## 1.5 Bug 校验器
+
+当前最低门禁是根因→方案→任务闭环：
+
+```bash
+python3 docs/.workflow/scripts/validators.py bug_chain BF01
+```
+
+`bug_chain` 检查：
+
+- `01-问题描述.md` 至 `06-执行记录.md` 存在且非空。
+- `state.json` 存在。
+- `事实锚点.json.rootcause_anchors` 中每个根因都被 `solution_mappings` 覆盖。
+- `solution_mappings` 中每个方案都被 `task_mappings` 覆盖。
+
+未通过时不得进入验收发布。
 
 ---
 

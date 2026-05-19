@@ -16,6 +16,9 @@
 | 查看业务规则 | [[03-knowledge/05-业务规则/00-业务规则总览]] |
 | 恢复中断的会话 | `python3 docs/.workflow/scripts/init_feature.py --recover Fxx` |
 | 查看所有功能状态 | `python3 docs/.workflow/scripts/init_feature.py --list` |
+| 恢复中断的 bug 会话 | `python3 docs/.workflow/scripts/init_bugfix.py --recover BFxx` |
+| 查看今天的 bug 列表 | `python3 docs/.workflow/scripts/init_bugfix.py --list` |
+| 查看全部 bug 状态 | `python3 docs/.workflow/scripts/init_bugfix.py --list-all` |
 | 生成阶段上下文包 | `python3 docs/.workflow/scripts/context_packets.py build Fxx S6 --task T01` |
 | 记录 OpenSpec 决策 | 写入 `01-需求确认/OpenSpec决策记录-YYYYMMDD.md` 后执行 `stage_gates.py auto Fxx openspec-decision-recorded` |
 
@@ -81,4 +84,4 @@ docs/
 
 ---
 
-*最后更新: 2026-05-15*
+*最后更新: 2026-05-19*

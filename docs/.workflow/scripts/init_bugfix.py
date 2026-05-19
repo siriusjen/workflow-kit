@@ -6,6 +6,7 @@ init_bugfix.py — Bug 修复目录初始化脚本 v1.0
   python3 init_bugfix.py "问题名称"
   python3 init_bugfix.py --list              # 查看今天的 BF 列表
   python3 init_bugfix.py --list-all          # 查看所有日期的 BF 列表
+  python3 init_bugfix.py --recover BF01      # 输出恢复确认卡
 """
 
 import json
@@ -496,6 +497,117 @@ def tpl_10_ai(bf_number: str, problem_name: str) -> str:
 """
 
 
+def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
+    ts = now_iso()
+    return {
+        "_comment": "唯一权威状态文件，由脚本和校验器维护",
+        "spec_version": "1.0",
+        "workflow_kind": "bugfix",
+        "bug_id": bf_number,
+        "bug_name": problem_name,
+        "date": date,
+        "created_at": ts,
+        "last_updated": ts,
+        "current_stage": "分析中",
+        "current_step": "01-问题描述",
+        "step_index": 1,
+        "step_total": 9,
+        "allowed_next_actions": [
+            "填写 01-问题描述",
+            "读取 恢复包.md"
+        ],
+        "blocked_actions": [
+            "关闭 bug",
+            "发布",
+            "同步 workflow-kit",
+            "删除历史记录"
+        ],
+        "human_approval_required": False,
+        "human_approval_pending": False,
+        "human_approvals": [],
+        "checklist": {
+            "problem_description_done": False,
+            "scope_done": False,
+            "rootcause_done": False,
+            "solution_done": False,
+            "task_split_done": False,
+            "execution_done": False,
+            "test_done": False,
+            "release_done": False,
+            "retrospective_done": False,
+            "ai_record_done": False
+        },
+        "current_step_log": {
+            "completed_steps": ["目录骨架初始化"],
+            "started_steps": [],
+            "pending_steps": [
+                "01-问题描述",
+                "02-环境与影响范围",
+                "03-根因分析",
+                "04-解决方案",
+                "05-任务拆解",
+                "06-执行记录",
+                "07-测试验证",
+                "08-验收发布",
+                "09-复盘与沉淀",
+                "10-AI协作记录"
+            ],
+            "context_usage_pct": 0,
+            "compact_recommended": False
+        },
+        "context_manifest": {
+            "current_packet": None,
+            "packets": []
+        },
+        "subagent_log": [],
+        "exception_log": [],
+        "snapshots": []
+    }
+
+
+def tpl_bug_recovery(bf_number: str, problem_name: str) -> str:
+    return f"""# {bf_number}-{problem_name} 恢复包
+
+> 会话中断后，主 Agent 启动的第一步先读这个文件，再读 `state.json` 和 `00-总览.md`
+
+---
+
+## 当前恢复确认卡
+
+```
+[恢复确认] {bf_number} ({problem_name}) · 分析中 · step 1/9
+当前状态: 01-问题描述
+基线: state.json=已生成 | 00-总览.md=已建立 | 01-05 事实链=待补齐
+当前上下文包: 未生成
+已完成步骤: 目录骨架初始化
+当前进行中步骤: 无
+待办步骤: 01-问题描述, 02-环境与影响范围, 03-根因分析, 04-解决方案, 05-任务拆解, 06-执行记录, 07-测试验证, 08-验收发布, 09-复盘与沉淀, 10-AI协作记录
+关键结论: 无（尚未进入根因分析）
+当前小步下一步: 填写 01-问题描述
+当前合法下一动作:
+  → 读 `state.json`
+  → 读 `00-总览.md`
+  → 继续补齐 01-问题描述
+恢复检查: 无
+明确不能做: 关闭 bug / 发布 / 删除历史记录
+风险项: 仅靠 markdown 人工维护时，状态和索引很容易漂移
+上下文用量: 0%
+---
+确认恢复完成，等待指令。
+```
+
+---
+
+## 会话恢复协议（主 Agent 必读）
+
+1. 读 `state.json` 确认 current_stage / current_step_log
+2. 读 `00-总览.md` 确认当前处理进度
+3. 对照规范检查当前阶段是否完成且正确
+4. 输出恢复确认卡
+5. 等待指令，不允许提前行动
+"""
+
+
 def create_bugfix(problem_name: str):
     """创建 Bug Fix 目录骨架"""
     date = today()
@@ -510,9 +622,12 @@ def create_bugfix(problem_name: str):
         sys.exit(1)
 
     bf_dir.mkdir(parents=True)
+    (bf_dir / "06-上下文包").mkdir(parents=True, exist_ok=True)
+    (bf_dir / "06-上下文包" / ".gitkeep").write_text("", encoding="utf-8")
 
     # 生成 10 个子文档
     files = {
+        "state.json": build_bug_state(bf_number, problem_name, date),
         "00-总览.md":           tpl_overview(bf_number, problem_name, date),
         "01-问题描述.md":       tpl_01_problem(bf_number, problem_name),
         "02-环境与影响范围.md": tpl_02_scope(bf_number, problem_name),
@@ -524,9 +639,20 @@ def create_bugfix(problem_name: str):
         "08-验收发布.md":       tpl_08_release(bf_number, problem_name),
         "09-复盘与沉淀.md":     tpl_09_retrospective(bf_number, problem_name),
         "10-AI协作记录.md":     tpl_10_ai(bf_number, problem_name),
+        "恢复包.md":             tpl_bug_recovery(bf_number, problem_name),
+        "事实锚点.json":          json.dumps({
+            "_comment": "Bug 根因→方案→任务事实链锚点；validators.py bug_chain 读取",
+            "bug_id": bf_number,
+            "last_updated": None,
+            "rootcause_anchors": [],
+            "solution_mappings": [],
+            "task_mappings": []
+        }, ensure_ascii=False, indent=2),
     }
 
     for filename, content in files.items():
+        if isinstance(content, dict):
+            content = json.dumps(content, ensure_ascii=False, indent=2)
         (bf_dir / filename).write_text(content, encoding="utf-8")
 
     # 更新 docs/README.md bug 索引
@@ -547,6 +673,16 @@ def create_bugfix(problem_name: str):
     print()
 
 
+def _load_bug_state(bf_dir: Path) -> dict:
+    state_file = bf_dir / "state.json"
+    if state_file.exists():
+        try:
+            return json.loads(state_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+
 def _update_readme_bugfix(bf_number: str, problem_name: str, date: str, bf_dir: Path):
     """在 docs/README.md 的 bug 索引中追加新记录"""
     readme = DOCS_DIR / "README.md"
@@ -556,23 +692,23 @@ def _update_readme_bugfix(bf_number: str, problem_name: str, date: str, bf_dir: 
     rel = str(bf_dir.relative_to(DOCS_DIR)).replace("\\", "/")
     new_entry = f"| {date} | {bf_number} | {problem_name} | 分析中 | [[{rel}/00-总览]] |"
 
-    if "## Bug Fix 索引" in content:
-        lines = content.split("\n")
-        out = []
-        in_table = False
-        inserted = False
-        for line in lines:
-            out.append(line)
-            if "## Bug Fix 索引" in line:
-                in_table = True
-            if in_table and not inserted and line.startswith("| ---"):
-                out.append(new_entry)
-                inserted = True
-        content = "\n".join(out)
+    section_re = re.compile(
+        r"(## 02-Bug Fix 索引\s*\n\n\| 日期 \| 编号 \| 问题名 \| 状态 \| 链接 \|\n"
+        r"\| ---- \| ---- \| ------ \| ---- \| ---- \|\n)(.*?)(\n\n## |\Z)",
+        re.S,
+    )
+    match = section_re.search(content)
+    if match:
+        header, body, tail = match.groups()
+        rows = [line for line in body.splitlines() if line.strip().startswith("|")]
+        rows = [line for line in rows if f"| {date} | {bf_number} |" not in line]
+        rows.append(new_entry)
+        replacement = header + "\n".join(rows) + tail
+        content = content[:match.start()] + replacement + content[match.end():]
     else:
         content += f"""
 
-## Bug Fix 索引
+## 02-Bug Fix 索引
 
 | 日期 | 编号 | 问题名 | 状态 | 链接 |
 | ---- | ---- | ------ | ---- | ---- |
@@ -608,18 +744,19 @@ def list_bugfixes(all_dates: bool = False):
             key=lambda d: d.name
         )
         for bf_dir in bfs:
-            # 读总览获取状态
-            overview = bf_dir / "00-总览.md"
-            status = "未知"
-            if overview.exists():
-                for line in overview.read_text(encoding="utf-8").split("\n"):
-                    if "当前状态" in line and ":" in line:
-                        parts = line.split(":")
-                        if len(parts) > 1:
-                            raw = parts[1].strip().split("/")[0].strip()
-                            # 取第一个状态词
-                            status = raw.replace("*", "").strip()
-                            break
+            # 优先读 state.json；若不存在则回退到总览
+            state = _load_bug_state(bf_dir)
+            status = state.get("current_stage", "未知") if state else "未知"
+            if not state:
+                overview = bf_dir / "00-总览.md"
+                if overview.exists():
+                    for line in overview.read_text(encoding="utf-8").split("\n"):
+                        if "当前状态" in line and ":" in line:
+                            parts = line.split(":")
+                            if len(parts) > 1:
+                                raw = parts[1].strip().split("/")[0].strip()
+                                status = raw.replace("*", "").strip()
+                                break
             # 拆分 BFxx 和 问题名
             m = re.match(r"(BF\d+)-(.*)", bf_dir.name)
             if m:
@@ -632,6 +769,48 @@ def list_bugfixes(all_dates: bool = False):
     print()
 
 
+def recover_bugfix(bug_id: str):
+    matches = []
+    for date_dir in sorted([d for d in BUGFIX_ROOT.iterdir() if d.is_dir()], key=lambda d: d.name, reverse=True):
+        for bf_dir in sorted([d for d in date_dir.iterdir() if d.is_dir() and d.name.startswith(bug_id)], key=lambda d: d.name):
+            matches.append(bf_dir)
+    if not matches:
+        print(red(f"找不到 Bug Fix：{bug_id}"))
+        sys.exit(1)
+
+    bf_dir = matches[0]
+    state = _load_bug_state(bf_dir)
+    if not state:
+        print(red("state.json 不存在或已损坏"))
+        sys.exit(1)
+
+    pending = state.get("current_step_log", {}).get("pending_steps", [])
+    completed = state.get("current_step_log", {}).get("completed_steps", [])
+    allowed = state.get("allowed_next_actions", [])
+    blocked = state.get("blocked_actions", [])
+    current_packet = state.get("context_manifest", {}).get("current_packet") or "未生成"
+
+    print()
+    print(bold(cyan("─── 恢复确认卡 ───────────────────────────────────────")))
+    print(f"[恢复确认] {state.get('bug_id', bug_id)} ({state.get('bug_name', bf_dir.name)}) · {state.get('current_stage', '未知')} · step {state.get('step_index', 0)}/{state.get('step_total', 0)}")
+    print(f"当前状态: {state.get('current_step', '未设置')}")
+    print(f"基线: state.json=已生成 | 00-总览.md=已建立")
+    print(f"当前上下文包: {current_packet}")
+    print(f"已完成步骤: {', '.join(completed) or '无'}")
+    print(f"当前进行中步骤: 无")
+    print(f"待办步骤: {', '.join(pending) or '无'}")
+    print(f"关键结论:")
+    print(f"  - bug 流程需要 machine-state 和恢复包，不能只靠 markdown 表格")
+    print(f"  - README 索引写入必须幂等")
+    print(f"当前小步下一步: {allowed[0] if allowed else '无'}")
+    print(f"当前合法下一动作:")
+    for action in allowed or ["无"]:
+        print(f"  → {action}")
+    print(f"明确不能做: {', '.join(blocked) or '无'}")
+    print(f"上下文用量: {state.get('current_step_log', {}).get('context_usage_pct', 0)}%")
+    print("确认恢复完成，等待指令。\n")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -641,6 +820,11 @@ def main():
         list_bugfixes(all_dates=False)
     elif sys.argv[1] == "--list-all":
         list_bugfixes(all_dates=True)
+    elif sys.argv[1] == "--recover":
+        if len(sys.argv) < 3:
+            print(red("请提供 Bug 编号，例如：--recover BF01"))
+            sys.exit(1)
+        recover_bugfix(sys.argv[2])
     else:
         problem_name = " ".join(sys.argv[1:])
         create_bugfix(problem_name)
