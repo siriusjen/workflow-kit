@@ -305,7 +305,7 @@ AUTO_TRANSITIONS = {
 
 BUG_APPROVAL_TRANSITIONS = {
     "approve-rootcause": {
-        "from_stages": ["分析中"],
+        "from_stages": ["分析中", "B1-诊断"],
         "to_stage": "修复方案",
         "to_step": "04-解决方案",
         "step_index": 4,
@@ -322,7 +322,7 @@ BUG_APPROVAL_TRANSITIONS = {
         "description": "根因已确认，进入修复方案阶段"
     },
     "approve-fix-plan": {
-        "from_stages": ["修复方案"],
+        "from_stages": ["修复方案", "B2-方案"],
         "to_stage": "修复中",
         "to_step": "06-执行记录",
         "step_index": 6,
@@ -342,7 +342,7 @@ BUG_APPROVAL_TRANSITIONS = {
         "description": "修复方案和任务拆解已确认，进入执行修复"
     },
     "approve-release": {
-        "from_stages": ["验收发布"],
+        "from_stages": ["验收发布", "B4-验证"],
         "to_stage": "done",
         "to_step": "completed",
         "step_index": 9,
@@ -358,7 +358,7 @@ BUG_APPROVAL_TRANSITIONS = {
         "description": "Bug 验证与发布验收通过，流程关闭"
     },
     "approve-correction": {
-        "from_stages": ["分析中", "修复方案", "修复中", "验证", "验收发布"],
+        "from_stages": ["分析中", "B1-诊断", "修复方案", "B2-方案", "修复中", "B3-修复", "验证", "B4-验证", "验收发布"],
         "to_stage": None,
         "to_step": "human-corrected-resume",
         "step_index": None,
@@ -373,7 +373,7 @@ BUG_APPROVAL_TRANSITIONS = {
 
 BUG_AUTO_TRANSITIONS = {
     "bug-problem-described": {
-        "from_stages": ["分析中"],
+        "from_stages": ["分析中", "B1-诊断"],
         "checklist_set": "problem_description_done",
         "sets_step": "02-环境与影响范围",
         "step_index": 2,
@@ -381,7 +381,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-scope-done": {
-        "from_stages": ["分析中"],
+        "from_stages": ["分析中", "B1-诊断"],
         "checklist_set": "scope_done",
         "sets_step": "03-根因分析",
         "step_index": 3,
@@ -393,7 +393,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-rootcause-done": {
-        "from_stages": ["分析中"],
+        "from_stages": ["分析中", "B1-诊断"],
         "checklist_set": "rootcause_done",
         "sets_step": "awaiting-approve-rootcause",
         "step_index": 3,
@@ -402,7 +402,7 @@ BUG_AUTO_TRANSITIONS = {
         "sets": {"human_approval_required": True, "human_approval_pending": True}
     },
     "bug-solution-done": {
-        "from_stages": ["修复方案"],
+        "from_stages": ["修复方案", "B2-方案"],
         "checklist_set": "solution_done",
         "sets_step": "05-任务拆解",
         "step_index": 5,
@@ -410,7 +410,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-task-split-done": {
-        "from_stages": ["修复方案"],
+        "from_stages": ["修复方案", "B2-方案"],
         "checklist_set": "task_split_done",
         "sets_step": "awaiting-approve-fix-plan",
         "step_index": 5,
@@ -419,7 +419,7 @@ BUG_AUTO_TRANSITIONS = {
         "sets": {"human_approval_required": True, "human_approval_pending": True}
     },
     "bug-execution-done": {
-        "from_stages": ["修复中"],
+        "from_stages": ["修复中", "B3-修复"],
         "checklist_set": "execution_done",
         "sets_step": "07-测试验证",
         "to_stage": "验证",
@@ -432,7 +432,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-test-done": {
-        "from_stages": ["验证"],
+        "from_stages": ["验证", "B4-验证"],
         "checklist_set": "test_done",
         "sets_step": "08-验收发布",
         "to_stage": "验收发布",
@@ -441,7 +441,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["关闭 bug"]
     },
     "bug-release-done": {
-        "from_stages": ["验收发布"],
+        "from_stages": ["验收发布", "B4-验证"],
         "checklist_set": "release_done",
         "sets_step": "awaiting-approve-release",
         "step_index": 9,
@@ -1051,6 +1051,13 @@ def load_state(fdir: Path) -> dict:
         sys.exit(1)
 
 
+def check_human_approval_pending(s: dict):
+    if s.get("human_approval_pending") is True:
+        print(red("❌ 当前存在待人工确认锚点，禁止执行任何流转与推进操作。"))
+        print(yellow("请先运行: python3 docs/.workflow/scripts/stage_gates.py approve <BFxx> <口令>"))
+        sys.exit(1)
+
+
 def sync_readme_bugfix_status(fdir: Path, state: dict):
     if workflow_kind(state) != "bugfix":
         return
@@ -1390,12 +1397,7 @@ def append_execution_log(fdir: Path, stage: str, step: str, status: str, conclus
 
 def cmd_step_start(fdir: Path, step_name: str, plan_input: str):
     s = load_state(fdir)
-    if s.get("human_approval_pending") is True:
-        print(red("❌ 当前存在待人工确认锚点，禁止 step-start。"))
-        print(bold("当前合法下一动作:"))
-        for action in (s.get("allowed_next_actions") or ["（无）"]):
-            print(f"  → {action}")
-        sys.exit(1)
+    check_human_approval_pending(s)
 
     step_explicitly_allowed = False
     if workflow_kind(s) == "bugfix":
@@ -1486,6 +1488,7 @@ def update_nav(fdir: Path, state: dict):
 def cmd_progress(fdir: Path, note_input: str):
     """记录当前 in_progress_step 中已完成的小动作，不关闭当前步骤。"""
     s = load_state(fdir)
+    check_human_approval_pending(s)
     data = parse_required_json_object(note_input, "progress")
     validate_progress_data(data)
 
@@ -1672,6 +1675,7 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
        conclusion_input 必须是 JSON object
     """
     s = load_state(fdir)
+    check_human_approval_pending(s)
 
     data = parse_required_json_object(conclusion_input, "step-done")
     validate_step_done_data(data)
@@ -1763,6 +1767,7 @@ def cmd_ctx_update(fdir: Path, pct: int):
 
 def cmd_subagent_start(fdir: Path, subagent_name: str, dispatch_input: str):
     s = load_state(fdir)
+    check_human_approval_pending(s)
     data = parse_required_json_object(dispatch_input, "subagent-start")
     validate_subagent_dispatch(s, subagent_name, data)
     validate_context_packet_for_subagent(fdir, s, data)
@@ -1860,6 +1865,7 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
 
 def cmd_auto(fdir: Path, key: str):
     s = load_state(fdir)
+    check_human_approval_pending(s)
     if workflow_kind(s) == "bugfix" and s.get("in_progress_step"):
         print(red("❌ 当前存在未 step-done 的步骤，禁止自动推进状态。"))
         print(red(f"  当前进行中: {s['in_progress_step'].get('step')}"))

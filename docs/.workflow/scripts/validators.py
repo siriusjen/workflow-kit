@@ -490,8 +490,12 @@ def v_rdtv_closure(fdir: Path) -> bool:
     print(bold("\n── 校验器 5: RDTV 闭环 ──"))
 
     state = load_json(fdir / "state.json")
-    if state.get("current_stage") != "交叉验证":
-        print(red(f"  当前阶段不是交叉验证，禁止执行 RDTV 闭环: {state.get('current_stage')}"))
+    allowed_stages = {"交叉验证", "验收发布", "done"}
+    if state.get("current_stage") not in allowed_stages:
+        print(red(
+            f"  当前阶段不允许执行 RDTV 闭环: {state.get('current_stage')} "
+            f"(允许: {', '.join(sorted(allowed_stages))})"
+        ))
         return False
     if not state.get("checklist", {}).get("artifact_package_done"):
         print(red("  Jar 构建尚未完成，禁止执行 RDTV 闭环"))
@@ -511,11 +515,24 @@ def v_rdtv_closure(fdir: Path) -> bool:
         print(red("  RDTV映射表为空"))
         return False
 
+    report_f = fdir / "05-测试验证" / "RDTV报告.json"
+    report = load_json(report_f) or {}
+    report_rows = {}
+    for row in report.get("rdtv_table", []):
+        if not isinstance(row, dict):
+            continue
+        key = (str(row.get("r", "")), str(row.get("t", "")))
+        report_rows[key] = row
+
     details = []; passed = True
     rows = []
     for m in mapping:
         r, d, t = m.get("r","?"), m.get("d","?"), m.get("t","?")
         v, vr = m.get("v"), m.get("v_result")
+        report_row = report_rows.get((str(r), str(t)))
+        if (not v or not vr) and report_row:
+            v = v or report_row.get("v")
+            vr = vr or report_row.get("result")
         issues = []
         if not v: issues.append("缺V编号")
         if not vr: issues.append("V结果空")
@@ -528,6 +545,8 @@ def v_rdtv_closure(fdir: Path) -> bool:
             details.append({"ok": True,
                             "msg": f"R={r}→D={d}→T={t}→V={v} [{vr}]"})
         rows.append({"r":r, "d":d, "t":t, "v": v or "—", "result": vr or "—"})
+        m["v"] = v
+        m["v_result"] = vr
 
     mapped_requirements = set()
     for row in mapping:
@@ -557,23 +576,45 @@ def v_rdtv_closure(fdir: Path) -> bool:
     if passed:
         print(cyan(f"  追溯表: 05-测试验证/RDTV报告.json"))
         print(cyan(f"  {report['total']} 条链路全部闭合"))
-        _trigger_auto(fdir.name.split("-")[0], "rdtv-mapping-complete")
+        if state.get("current_stage") == "交叉验证":
+            _trigger_auto(fdir.name.split("-")[0], "rdtv-mapping-complete")
 
     return passed
 
 
 # ── Bug 校验器: 根因→方案→任务闭环 ───────────────────────────────────────────
 
+def _check_array_of_objects(data: dict, array_name: str, required_fields: list) -> list:
+    """校验 JSON 数组的元素是否为对象且含必填字段。
+    返回错误信息列表，空列表表示无错误。
+    """
+    items = data.get(array_name, [])
+    errors = []
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            errors.append(f"{array_name}[{i}] 不是 JSON 对象，当前类型: {type(item).__name__}")
+            continue
+        for f in required_fields:
+            if not item.get(f):
+                errors.append(f"{array_name}[{i}] 缺少必填字段: {f}")
+    return errors
+
+
 def v_bug_chain(bdir: Path) -> bool:
     print(bold("\n── Bug 校验器: 根因→方案→任务闭环 ──"))
 
     required_docs = [
+        "00-总览.md",
         "01-问题描述.md",
         "02-环境与影响范围.md",
         "03-根因分析.md",
         "04-解决方案.md",
         "05-任务拆解.md",
         "06-执行记录.md",
+        "07-测试验证.md",
+        "08-验收发布.md",
+        "09-复盘与沉淀.md",
+        "10-AI协作记录.md",
         "state.json",
     ]
     details = []
@@ -591,15 +632,38 @@ def v_bug_chain(bdir: Path) -> bool:
         details.append({"ok": False, "msg": "事实锚点.json: 缺失或 JSON 无效"})
         passed = False
     else:
+        schema_errors = []
+        schema_errors += _check_array_of_objects(anchors, "rootcause_anchors", ["id", "summary", "source"])
+        schema_errors += _check_array_of_objects(anchors, "solution_mappings", ["rootcause_id", "solution_ref", "status"])
+        schema_errors += _check_array_of_objects(anchors, "task_mappings", ["solution_ref", "task_id", "status"])
+        if schema_errors:
+            passed = False
+            for err in schema_errors:
+                details.append({"ok": False, "msg": err})
+
+        # status 值域校验
+        for item in anchors.get("solution_mappings", []):
+            if isinstance(item, dict):
+                status = item.get("status", "")
+                if status not in {"covered", "partial", "uncovered"}:
+                    passed = False
+                    details.append({"ok": False, "msg": f"solution_mappings 中 status 值 '{status}' 不在允许范围 (covered/partial/uncovered)"})
+        for item in anchors.get("task_mappings", []):
+            if isinstance(item, dict):
+                status = item.get("status", "")
+                if status not in {"covered", "partial", "uncovered"}:
+                    passed = False
+                    details.append({"ok": False, "msg": f"task_mappings 中 status 值 '{status}' 不在允许范围 (covered/partial/uncovered)"})
+
         rootcause_ids = {
             str(item.get("id"))
             for item in anchors.get("rootcause_anchors", [])
-            if item.get("id")
+            if isinstance(item, dict) and item.get("id")
         }
         solution_ids = {
             str(item.get("rootcause_id"))
             for item in anchors.get("solution_mappings", [])
-            if item.get("rootcause_id") and item.get("status") == "covered"
+            if isinstance(item, dict) and item.get("rootcause_id") and item.get("status") == "covered"
         }
         missing_solution = sorted(rootcause_ids - solution_ids)
         if missing_solution:
@@ -608,15 +672,37 @@ def v_bug_chain(bdir: Path) -> bool:
         else:
             details.append({"ok": True, "msg": "所有根因均被方案覆盖"})
 
+        # HTML 物理注释锚点扫描校验
+        rc_file = bdir / "03-根因分析.md"
+        if rc_file.exists():
+            rc_content = rc_file.read_text(encoding="utf-8")
+            physical_anchors = set(re.findall(r"<!--\s*anchor\s*:\s*(RC\d+)\s*-->", rc_content))
+            declared_anchors = {
+                str(item.get("id"))
+                for item in anchors.get("rootcause_anchors", [])
+                if isinstance(item, dict) and item.get("id")
+            }
+            missing_physical = sorted(declared_anchors - physical_anchors)
+            if missing_physical:
+                passed = False
+                details.append({"ok": False, "msg": f"事实锚点.json 中声明的根因在 03-根因分析.md 中缺少对应的物理 HTML 注释锚点: {missing_physical}"})
+            else:
+                details.append({"ok": True, "msg": "所有声明的根因均在 03-根因分析.md 中有对应的物理 HTML 注释锚点"})
+            
+            undeclared_physical = sorted(physical_anchors - declared_anchors)
+            if undeclared_physical:
+                passed = False
+                details.append({"ok": False, "msg": f"03-根因分析.md 中存在未在 事实锚点.json 中声明的物理 HTML 注释锚点: {undeclared_physical}"})
+
         solution_refs = {
             str(item.get("solution_ref"))
             for item in anchors.get("solution_mappings", [])
-            if item.get("solution_ref")
+            if isinstance(item, dict) and item.get("solution_ref")
         }
         task_refs = {
             str(item.get("solution_ref"))
             for item in anchors.get("task_mappings", [])
-            if item.get("solution_ref") and item.get("status") == "covered"
+            if isinstance(item, dict) and item.get("solution_ref") and item.get("status") == "covered"
         }
         missing_tasks = sorted(solution_refs - task_refs)
         if missing_tasks:

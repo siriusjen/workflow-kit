@@ -52,514 +52,33 @@ def next_bf_number() -> str:
     if not existing:
         return "BF01"
     return f"BF{max(existing) + 1:02d}"
-
-
-def tpl_overview(bf_number: str, problem_name: str, date: str) -> str:
-    return f"""# {bf_number}-{problem_name} 总览
-
-> **所属**: docs/02-bug-fix/{date}/{bf_number}-{problem_name}
-> **发现时间**: {date}
-> **严重程度**: P0-线上阻塞 / P1-核心功能受损 / P2-功能异常 / P3-体验问题
-> **当前状态**: 分析中
-> **负责人**: （填写）
-> **解决时限**: （填写）
-
----
-
-## 处理进度
-
-| 步骤 | 状态 | 完成时间 | 说明 |
-|------|------|----------|------|
-| 01-问题描述 | ⏳ 待开始 | | |
-| 02-环境与影响范围 | ⏳ 待开始 | | |
-| 03-根因分析 | ⏳ 待开始 | | |
-| 04-解决方案 | ⏳ 待开始 | | |
-| 05-任务拆解 | ⏳ 待开始 | | |
-| 06-执行记录 | ⏳ 待开始 | | |
-| 07-测试验证 | ⏳ 待开始 | | |
-| 08-验收发布 | ⏳ 待开始 | | |
-| 09-复盘与沉淀 | ⏳ 待开始 | | |
-
----
-
-## 关键结论
-
-*（修复完成后填写）*
-
-- **根因**:
-- **影响范围**:
-- **解决方案**:
-- **是否需要数据修复**:
-
----
-
-## 文档导航
-
-- [[01-问题描述]] · [[02-环境与影响范围]] · [[03-根因分析]]
-- [[04-解决方案]] · [[05-任务拆解]] · [[06-执行记录]]
-- [[07-测试验证]] · [[08-验收发布]] · [[09-复盘与沉淀]]
-- [[10-AI协作记录]] · [[11-排查附件/00-附件索引]]
-
----
-
-*创建时间: {now_iso()}*
-"""
-
-
-def tpl_01_problem(bf_number: str, problem_name: str) -> str:
-    return f"""# 01-问题描述
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 现象
-
-*（描述用户看到的、监控看到的现象，不要描述原因）*
-
-## 复现步骤
-
-1.
-2.
-3.
-
-## 必现条件
-
-- 环境:
-- 特殊输入:
-- 操作路径:
-
-## 截图 / 日志
-
-```
-（粘贴关键日志）
-```
-
-## 发现渠道
-
-- [ ] 用户反馈  [ ] 监控告警  [ ] 测试发现  [ ] 代码审查
-
-## 关联信息
-
-- 环境:
-- 版本:
-- 关联需求: （如有）
-"""
-
-
-def tpl_02_scope(bf_number: str, problem_name: str) -> str:
-    return f"""# 02-环境与影响范围
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 受影响环境
-
-- [ ] 生产环境  [ ] 预发布环境  [ ] 测试环境
-
-## 功能影响
-
-| 功能 | 是否受影响 | 影响描述 |
-|------|-----------|----------|
-| （功能名） | | |
-
-## 用户影响
-
-- 受影响用户数:
-- 影响时段:
-- 高峰影响:
-
-## 数据影响
-
-- [ ] 有数据损坏  [ ] 有数据错误  [ ] 无数据影响
-- 数据详情:
-
-## 严重程度定级
-
-- **P?-（填写）**（原因：）
-
-## 临时规避方案
-
-*（如有，描述用户或运营可以采取的临时绕过方案）*
-"""
-
-
-def tpl_03_analysis(bf_number: str, problem_name: str) -> str:
-    return f"""# 03-根因分析
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 5-Why 根因追溯
-
-| Why | 问题 | 答案 |
-|-----|------|------|
-| Why 1 | 为什么出现该现象？ | |
-| Why 2 | 为什么... | |
-| Why 3 | 为什么... | |
-| Why 4 | 为什么... | |
-| Why 5 | 为什么... | |
-
-## 根因定位
-
-- **直接原因**:
-- **深层原因**:
-
-## 相关代码定位
-
-- 文件:
-- 行号:
-- 关键代码:
-
-```java
-// 贴出关键代码片段
-```
-
-## 是否存在类似问题
-
-- [ ] 已排查，无类似问题
-- [ ] 待排查：（列出需要排查的点）
-"""
-
-
-def tpl_04_solution(bf_number: str, problem_name: str) -> str:
-    return f"""# 04-解决方案
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 方案对比
-
-| 方案 | 描述 | 优点 | 缺点 | 推荐 |
-|------|------|------|------|------|
-| A | | | | |
-| B | | | | ✓ |
-
-## 选择方案（填写），理由
-
-*（说明为什么选这个方案）*
-
-## 完整解决措施
-
-### 紧急措施（立即执行，治标）
-
-1.
-
-### 根本修复（治本）
-
-1.
-
-### 数据修复（如需）
-
-1.
-
-### 预防措施（避免同类问题）
-
-1.
-
-## 方案影响
-
-- 是否需要数据库迁移:
-- 是否需要停机:
-- 预计修复时长:
-- 回滚方案:
-"""
-
-
-def tpl_05_tasks(bf_number: str, problem_name: str) -> str:
-    return f"""# 05-任务拆解
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 任务清单
-
-| 编号 | 任务 | 文件/范围 | 验收标准 | 预计时长 |
-|------|------|-----------|----------|----------|
-| BT01 | | | | |
-| BT02 | | | | |
-
-## 执行顺序
-
-BT01 → BT02 → ...
-
-## 注意事项
-
-*（特殊权限、执行时序、依赖关系等）*
-"""
-
-
-def tpl_06_execution(bf_number: str, problem_name: str) -> str:
-    return f"""# 06-执行记录
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 进行中
-
----
-
-## BT01 - （任务名）
-
-- **执行时间**:
-- **执行人**:
-- **实际改动**:
-- **执行结果**: ⏳ 进行中 / ✓ 成功 / ✗ 失败
-- **备注**:
-
----
-
-## 异常记录
-
-| 时间 | 异常 | 处理方式 |
-|------|------|----------|
-
-"""
-
-
-def tpl_07_test(bf_number: str, problem_name: str) -> str:
-    return f"""# 07-测试验证
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 核心修复验证（必须全部通过）
-
-| 编号 | 测试场景 | 输入 | 预期结果 | 实际结果 | 通过 |
-|------|----------|------|----------|----------|------|
-| V01 | 正常场景 | | | | |
-| V02 | 边界场景 | | | | |
-| V03 | 异常场景 | | | | |
-
-## 回归验证（防止修复引入新问题）
-
-| 编号 | 测试场景 | 验证目的 | 通过 |
-|------|----------|----------|------|
-| R01 | 核心主流程 | 修复未影响主流程 | |
-| R02 | | | |
-
-## 数据修复验证（如有数据修复）
-
-| 编号 | 验证内容 | SQL | 预期 | 实际 |
-|------|----------|-----|------|------|
-| D01 | | | | |
-
-## 测试结论
-
-- [ ] 核心修复验证：全部通过
-- [ ] 回归验证：全部通过
-- [ ] 数据修复验证：全部通过
-- [ ] **整体结论：可以发布**
-"""
-
-
-def tpl_08_release(bf_number: str, problem_name: str) -> str:
-    return f"""# 08-验收发布
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 发布前检查清单
-
-### 代码检查
-- [ ] 所有 BT 任务代码已提交，PR 已合并
-- [ ] 代码已通过 CI 所有检查
-- [ ] 07-测试验证所有用例通过
-
-### 数据库检查（如涉及）
-- [ ] DDL 迁移脚本已在测试环境验证
-- [ ] 数据修复脚本已在测试环境验证
-- [ ] 生产数据库备份已完成
-
-### 回滚准备
-- [ ] 回滚方案已确认
-- [ ] 预计回滚时间: （填写）
-
----
-
-## 发布步骤
-
-1.
-2.
-3.
-
----
-
-## 发布记录
-
-- **发布时间**:
-- **发布人**:
-- **发布结果**: ✓ 成功 / ✗ 失败
-- **上线验证**: V01-V0X 全部通过
-
-## 关闭条件
-
-- [ ] 所有验收场景通过
-- [ ] 监控无新增错误
-- [ ] 数据修复完成（如有）
-- **关闭时间**:
-"""
-
-
-def tpl_09_retrospective(bf_number: str, problem_name: str) -> str:
-    return f"""# 09-复盘与沉淀
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 待填写
-
----
-
-## 时间线回顾
-
-| 时间 | 事件 |
-|------|------|
-| | 问题发现 |
-| | 根因确认 |
-| | 修复完成 |
-| | 上线发布 |
-| | 关闭 |
-
-**总历时**: （填写）
-
----
-
-## 好的做法（保持）
-
-*（这次处理过程中做得好的地方）*
-
----
-
-## 需要改进（行动项）
-
-| 改进项 | 行动 | 负责人 | 完成时间 |
-|--------|------|--------|----------|
-| | | | |
-
----
-
-## 知识沉淀
-
-以下内容已同步到知识库：
-
-- [[03-knowledge/05-业务规则/xx]] — （说明沉淀了什么）
-
----
-
-## 同类风险排查
-
-- [ ] 已排查，无同类风险
-- [ ] 发现同类风险：（列出）
-"""
-
-
-def tpl_10_ai(bf_number: str, problem_name: str) -> str:
-    return f"""# 10-AI协作记录
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 进行中
-
----
-
-## AI 参与范围
-
-| 环节 | AI 参与 | 人工参与 | 说明 |
-|------|---------|---------|------|
-| 01-问题描述整理 | | | |
-| 02-环境与影响范围 | | | |
-| 03-根因分析 | | | |
-| 04-解决方案 | | | |
-| 05-任务拆解 | | | |
-| 06-代码修复 | | | |
-| 07-测试验证 | | | |
-| 08-验收发布 | | | |
-
----
-
-## AI 执行情况
-
-- 根因分析准确率:
-- 代码修复完整性:
-- 测试场景覆盖:
-- 是否出现跑偏:
-
----
-
-## 本次协作改进建议
-
-*（下次 AI 协作可以改进的地方）*
-"""
-
-
-def tpl_11_attachments(bf_number: str, problem_name: str) -> str:
-    return f"""# 00-附件索引
-
-> **所属**: {bf_number}-{problem_name}
-> **状态**: 进行中
-
----
-
-## 归档规则
-
-- 本目录统一保存本次 bug 排查过程中产生的 SQL、curl、shell、Python、截图、日志摘录、导出数据和响应样本。
-- 临时执行文件可短暂放在 `/private/tmp`，但在 `step-done` 前必须复制回本目录并在执行记录中登记。
-- 目录内只保留可复盘的事实材料，不放口头结论。
-
-## 附件清单
-
-| 时间 | 类型 | 文件名 | 说明 | 来源步骤 |
-|------|------|--------|------|---------|
-| | SQL | | | |
-| | curl | | | |
-| | 日志 | | | |
-| | 数据导出 | | | |
-| | 截图 | | | |
-
-## 当前结论
-
-- 待填写
-"""
-
-
+def load_template(name: str, bf_number: str, problem_name: str, date: str) -> str:
+    tpl_path = PROJECT_ROOT / "docs/.workflow/templates/bug-fix" / name
+    if not tpl_path.exists():
+        print(red(f"错误: 模版文件不存在 {tpl_path}"))
+        sys.exit(1)
+    content = tpl_path.read_text(encoding="utf-8")
+    return content.replace("{bf_number}", bf_number).replace("{problem_name}", problem_name).replace("{date}", date)
 def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
-    ts = now_iso()
     return {
         "_comment": "唯一权威状态文件，由脚本和校验器维护",
-        "spec_version": "1.0",
+        "spec_version": "1.1",
         "workflow_kind": "bugfix",
         "bug_id": bf_number,
         "bug_name": problem_name,
         "date": date,
-        "created_at": ts,
-        "last_updated": ts,
-        "current_stage": "分析中",
+        "created_at": now_iso(),
+        "last_updated": now_iso(),
+        "current_stage": "B1-诊断",
         "current_step": "01-问题描述",
         "step_index": 1,
         "step_total": 9,
-        "allowed_next_actions": [
-            "填写 01-问题描述",
-            "读取 恢复包.md",
-            "整理排查附件到 11-排查附件"
-        ],
-        "blocked_actions": [
-            "关闭 bug",
-            "发布",
-            "同步 workflow-kit",
-            "删除历史记录"
-        ],
+        "allowed_next_actions": ["step-start 01-问题描述"],
+        "blocked_actions": ["写代码", "发布", "关闭 bug"],
         "human_approval_required": False,
         "human_approval_pending": False,
         "human_approvals": [],
+        "in_progress_step": None,
         "checklist": {
             "problem_description_done": False,
             "scope_done": False,
@@ -569,28 +88,8 @@ def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
             "execution_done": False,
             "test_done": False,
             "release_done": False,
-            "retrospective_done": False,
-            "ai_record_done": False,
             "context_packet_done": False,
             "fact_chain_done": False
-        },
-        "current_step_log": {
-            "completed_steps": ["目录骨架初始化"],
-            "started_steps": [],
-            "pending_steps": [
-                "01-问题描述",
-                "02-环境与影响范围",
-                "03-根因分析",
-                "04-解决方案",
-                "05-任务拆解",
-                "06-执行记录",
-                "07-测试验证",
-                "08-验收发布",
-                "09-复盘与沉淀",
-                "10-AI协作记录"
-            ],
-            "context_usage_pct": 0,
-            "compact_recommended": False
         },
         "context_manifest": {
             "current_packet": None,
@@ -598,52 +97,16 @@ def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
         },
         "subagent_log": [],
         "exception_log": [],
+        "current_step_log": {
+            "completed_steps": [],
+            "started_steps": [],
+            "progress_notes": [],
+            "pending_steps": ["01-问题描述"],
+            "context_usage_pct": 0,
+            "compact_recommended": False
+        },
         "snapshots": []
     }
-
-
-def tpl_bug_recovery(bf_number: str, problem_name: str) -> str:
-    return f"""# {bf_number}-{problem_name} 恢复包
-
-> 会话中断后，主 Agent 启动的第一步先读这个文件，再读 `state.json` 和 `00-总览.md`
-
----
-
-## 当前恢复确认卡
-
-```
-[恢复确认] {bf_number} ({problem_name}) · 分析中 · step 1/9
-当前状态: 01-问题描述
-基线: state.json=已生成 | 00-总览.md=已建立 | 01-05 事实链=待补齐
-当前上下文包: 未生成
-已完成步骤: 目录骨架初始化
-当前进行中步骤: 无
-待办步骤: 01-问题描述, 02-环境与影响范围, 03-根因分析, 04-解决方案, 05-任务拆解, 06-执行记录, 07-测试验证, 08-验收发布, 09-复盘与沉淀, 10-AI协作记录
-关键结论: 无（尚未进入根因分析）
-当前小步下一步: 填写 01-问题描述
-当前合法下一动作:
-  → 读 `state.json`
-  → 读 `00-总览.md`
-  → 继续补齐 01-问题描述
-恢复检查: 无
-明确不能做: 关闭 bug / 发布 / 删除历史记录
-风险项: 仅靠 markdown 人工维护时，状态和索引很容易漂移
-上下文用量: 0%
----
-确认恢复完成，等待指令。
-```
-
----
-
-## 会话恢复协议（主 Agent 必读）
-
-1. 读 `state.json` 确认 current_stage / current_step_log
-2. 读 `00-总览.md` 确认当前处理进度
-3. 对照规范检查当前阶段是否完成且正确
-4. 输出恢复确认卡
-5. 等待指令，不允许提前行动
-"""
-
 
 def create_bugfix(problem_name: str):
     """创建 Bug Fix 目录骨架"""
@@ -667,19 +130,19 @@ def create_bugfix(problem_name: str):
     # 生成标准文档与排查附件索引
     files = {
         "state.json": build_bug_state(bf_number, problem_name, date),
-        "00-总览.md":           tpl_overview(bf_number, problem_name, date),
-        "01-问题描述.md":       tpl_01_problem(bf_number, problem_name),
-        "02-环境与影响范围.md": tpl_02_scope(bf_number, problem_name),
-        "03-根因分析.md":       tpl_03_analysis(bf_number, problem_name),
-        "04-解决方案.md":       tpl_04_solution(bf_number, problem_name),
-        "05-任务拆解.md":       tpl_05_tasks(bf_number, problem_name),
-        "06-执行记录.md":       tpl_06_execution(bf_number, problem_name),
-        "07-测试验证.md":       tpl_07_test(bf_number, problem_name),
-        "08-验收发布.md":       tpl_08_release(bf_number, problem_name),
-        "09-复盘与沉淀.md":     tpl_09_retrospective(bf_number, problem_name),
-        "10-AI协作记录.md":     tpl_10_ai(bf_number, problem_name),
-        "11-排查附件/00-附件索引.md": tpl_11_attachments(bf_number, problem_name),
-        "恢复包.md":             tpl_bug_recovery(bf_number, problem_name),
+        "00-总览.md":           load_template("00-总览.md", bf_number, problem_name, date),
+        "01-问题描述.md":       load_template("01-问题描述.md", bf_number, problem_name, date),
+        "02-环境与影响范围.md": load_template("02-环境与影响范围.md", bf_number, problem_name, date),
+        "03-根因分析.md":       load_template("03-根因分析.md", bf_number, problem_name, date),
+        "04-解决方案.md":       load_template("04-解决方案.md", bf_number, problem_name, date),
+        "05-任务拆解.md":       load_template("05-任务拆解.md", bf_number, problem_name, date),
+        "06-执行记录.md":       load_template("06-执行记录.md", bf_number, problem_name, date),
+        "07-测试验证.md":       load_template("07-测试验证.md", bf_number, problem_name, date),
+        "08-验收发布.md":       load_template("08-验收发布.md", bf_number, problem_name, date),
+        "09-复盘与沉淀.md":     load_template("09-复盘与沉淀.md", bf_number, problem_name, date),
+        "10-AI协作记录.md":     load_template("10-AI协作记录.md", bf_number, problem_name, date),
+        "11-排查附件/00-附件索引.md": load_template("11-排查附件-00-附件索引.md", bf_number, problem_name, date),
+        "恢复包.md":             load_template("恢复包.md", bf_number, problem_name, date),
         "事实锚点.json":          json.dumps({
             "_comment": "Bug 根因→方案→任务事实链锚点；validators.py bug_chain 读取",
             "bug_id": bf_number,
@@ -730,7 +193,7 @@ def _update_readme_bugfix(bf_number: str, problem_name: str, date: str, bf_dir: 
         return
     content = readme.read_text(encoding="utf-8")
     rel = str(bf_dir.relative_to(DOCS_DIR)).replace("\\", "/")
-    new_entry = f"| {date} | {bf_number} | {problem_name} | 分析中 | [[{rel}/00-总览]] |"
+    new_entry = f"| {date} | {bf_number} | {problem_name} | B1-诊断 | [[{rel}/00-总览]] |"
 
     section_re = re.compile(
         r"(## 02-Bug Fix 索引\s*\n\n\| 日期 \| 编号 \| 问题名 \| 状态 \| 链接 \|\n"

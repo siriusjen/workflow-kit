@@ -109,6 +109,34 @@ python3 docs/.workflow/scripts/stage_gates.py ctx-update <FID> <百分比>
 S8 构建产物默认按 Java/Maven/Jar 校验，配置在 `docs/.workflow/project_config.json`；非 Java 项目必须按实际产物覆盖。
 技术方案阶段必须先输出 `01-需求确认/需求事实锚点.json`，再输出 `02-技术方案/代码影响点与依赖逻辑清单.md` 和 `02-技术方案/技术方案一致性检查.json`，避免方案自洽但偏离需求或现有实现。
 
+## Bug 处理 Skill 调度表
+
+收到 Bug 处理请求时，主 Agent **不加载** `docs/.workflow/bug修复规范.md` 全文，改为按以下调度表派遣 Skill 子 Agent：
+
+```
+阶段流转:
+  B1 诊断 → approve-rootcause → B2 方案 → approve-fix-plan → B3 修复 → B4 验证 → approve-release
+
+每个阶段:
+  1. 生成上下文包: context_packets.py build BFxx {Bn}
+  2. 加载 Skill: load_skill "bugfix/bug-b{n}-{name}"
+  3. spawn 子 Agent，输入 = {bug_dir, 必要前置文档}
+  4. 等待返回，校验输出格式与完整性
+  5. 过人工锚点（B1/B2/B4）
+  6. 进入下一阶段
+```
+
+| 阶段 | Skill | 输入 | 输出 | 锚点 |
+|------|-------|------|------|------|
+| B1 诊断 | `bugfix/bug-b1-diagnose` | 问题描述文本 | 01-03 + 事实锚点.json | approve-rootcause |
+| B2 方案 | `bugfix/bug-b2-plan` | 03 + 事实锚点 | 04-05 + 锚点更新 | approve-fix-plan |
+| B3 修复 | `bugfix/bug-b3-fix` | 05 + 事实锚点 | 代码改动 + 06 | auto |
+| B4 验证 | `bugfix/bug-b4-verify` | 05 + 06 | 07-08 + bug_chain | approve-release |
+
+Skill 定义文件: `docs/.workflow/skills/bugfix/bug-b{n}-*/SKILL.md`
+
+主 Agent 只持此调度表，具体模板与验证规则由各 Skill 内部承载。
+
 ## 子 Agent 派遣原则
 
 子 Agent 定义在 `docs/.workflow/agents/`。标准流程必须使用多 Agent；派遣时必须提供独立上下文、明确输入输出、限定范围，并要求结构化摘要返回。同一任务连续修正 3 次仍不通过时，停止并请求人工介入。若当前环境不能实际派遣，必须写入 `exception subagent-fallback`，不得静默主线替代。
