@@ -33,6 +33,9 @@ SCRIPTS_DIR   = SCRIPT_FILE.parent                    # docs/.workflow/scripts
 WORKFLOW_DIR  = SCRIPTS_DIR.parent                    # docs/.workflow
 DOCS_DIR      = WORKFLOW_DIR.parent                   # docs
 PROJECT_ROOT  = DOCS_DIR.parent                       # project root
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+from workflow_config import load_workflow_config as load_workflow_config_file
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
 TEMPLATES_DIR = WORKFLOW_DIR / "templates"
@@ -49,14 +52,6 @@ def resolve_features_root() -> Path:
 
 
 FEATURES_ROOT = resolve_features_root()
-
-DEFAULT_WORKFLOW_CONFIG = {
-    "context_warning_threshold": 50,
-    "context_compact_threshold": 70,
-    "subagent_retry_threshold": 3,
-    "feature_flow_enabled": True,
-    "bugfix_flow_enabled": True,
-}
 
 
 # ── 工具 ──────────────────────────────────────────────────────────────────────
@@ -143,24 +138,13 @@ def atomic_write_text(path: Path, content: str):
 
 
 def load_workflow_config() -> dict:
-    config_file = WORKFLOW_DIR / "project_config.json"
-    merged = dict(DEFAULT_WORKFLOW_CONFIG)
-    if not config_file.exists():
-        return merged
-    try:
-        raw = json.loads(config_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return merged
-    workflow = raw.get("workflow")
-    if not isinstance(workflow, dict):
-        return merged
-    for key, default in DEFAULT_WORKFLOW_CONFIG.items():
-        value = workflow.get(key)
-        if isinstance(default, bool) and isinstance(value, bool):
-            merged[key] = value
-        elif isinstance(default, int) and isinstance(value, int) and value >= 0:
-            merged[key] = value
-    return merged
+    return load_workflow_config_file(WORKFLOW_DIR)
+
+
+def ensure_feature_flow_enabled():
+    if not load_workflow_config()["feature_flow_enabled"]:
+        print(red("❌ project_config.json 已禁用 feature 流程，禁止初始化新 feature。"))
+        sys.exit(1)
 
 
 def load_json_with_snapshot_fallback(state_file: Path) -> dict:
@@ -689,6 +673,8 @@ def main():
             feature_name = " ".join(pos)
             feature_id = next_feature_id()
             print(cyan(f"自动分配编号: {feature_id}"))
+
+    ensure_feature_flow_enabled()
 
     # 输入模式
     input_mode = args.mode

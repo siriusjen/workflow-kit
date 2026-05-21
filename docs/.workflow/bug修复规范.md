@@ -10,7 +10,7 @@
 
 ```text
 1. 先做只读预检/分流：查已有 BF 索引、日志、必要代码和复现线索，判断是否需要正式创建 BF。
-2. 确认要按 bug 流程处理后，再运行 `init_bugfix.py` 建骨架，必须生成 `state.json` 和 `恢复包.md`。
+2. 收到新 Bug 描述时必须先询问用户是否启动自动排查流程 BFxx；用户明确确认后，才运行 `init_bugfix.py` 建骨架，必须生成 `state.json` 和 `恢复包.md`。
 3. 正式流程第一动作必须是先建本次 bug 的目录和总览，不允许在 BF 流程内先读代码。
 4. 先查清问题：01 问题描述 → 02 影响范围 → 03 根因分析。
 5. 先定方案再动手：04 解决方案 → 05 任务拆解。
@@ -221,7 +221,7 @@ python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-rootcause
 - `subagent-start` 必须校验 `context_packet` 存在、等于 `state.json.context_manifest.current_packet`，且登记在 `context_manifest.packets`。
 - `subagent-start` 必须提供非空 `input_paths`、`output_paths`、`instruction`；`input_paths` 必须存在。
 - `subagent-done` 必须携带 `dispatch_id`，并校验 `output_paths` 已存在。
-- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止执行 `auto`、`approve-*` 或把步骤标记为 `done`；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程。
+- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止执行 `auto`、普通 `approve-*` 或把步骤标记为 `done`；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程；`approve-correction` 不受该阻断限制。
 
 ### step-done 规范检查结论
 

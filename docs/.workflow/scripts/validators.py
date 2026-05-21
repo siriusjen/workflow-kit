@@ -222,6 +222,61 @@ def print_result(name: str, passed: bool, details: list = None, block: str = Non
     print()
 
 
+def latest_subagent_entries_for_current_step(state: dict) -> list[dict]:
+    target_stage = state.get("current_stage")
+    in_progress = state.get("in_progress_step")
+    target_step = in_progress.get("step") if isinstance(in_progress, dict) else state.get("current_step")
+    latest_by_subagent = {}
+
+    for entry in state.get("subagent_log", []):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("stage") != target_stage or entry.get("step") != target_step:
+            continue
+        subagent = entry.get("subagent")
+        if not subagent:
+            continue
+        latest_by_subagent[subagent] = entry
+
+    return list(latest_by_subagent.values())
+
+
+def blocking_subagent_entries_for_current_step(state: dict) -> list[dict]:
+    blocking_statuses = {"dispatched", "failed", "partial", "blocked"}
+    return [
+        entry for entry in latest_subagent_entries_for_current_step(state)
+        if entry.get("status") in blocking_statuses
+    ]
+
+
+def append_blocking_subagent_details(state: dict, details: list, action_label: str) -> bool:
+    blocking_entries = blocking_subagent_entries_for_current_step(state)
+    if not blocking_entries:
+        return False
+
+    workflow_id = state.get("feature_id") or state.get("bug_id") or "UNKNOWN"
+    details.append({
+        "ok": False,
+        "msg": f"当前步骤存在未闭合或未通过的子Agent，禁止{action_label}",
+    })
+    for entry in blocking_entries:
+        details.append({
+            "ok": False,
+            "msg": (
+                f"{entry.get('subagent', '?')} [{entry.get('status', '?')}] "
+                f"dispatch_id={entry.get('dispatch_id', '?')}"
+            ),
+        })
+    details.append({
+        "ok": False,
+        "msg": (
+            "请先让对应子Agent返回 done，或执行 "
+            f"stage_gates.py approve {workflow_id} approve-correction"
+        ),
+    })
+    return True
+
+
 def _trigger_auto(fid: str, key: str):
     """通过 stage_gates auto 触发状态转移"""
     result = subprocess.run(
@@ -625,6 +680,9 @@ def v_rdtv_closure(fdir: Path) -> bool:
         passed = False
         details.append({"ok": False, "msg": f"{r_number}: 没有 RDTV 闭环记录"})
 
+    if append_blocking_subagent_details(state, details, "执行 RDTV 闭环校验"):
+        passed = False
+
     data["last_updated"] = now_iso()
     save_json(f, data)
 
@@ -803,6 +861,9 @@ def v_bug_chain(bdir: Path) -> bool:
             details.append({"ok": False, "msg": "state.json: ai_record_done 未完成（标准模式必需）"})
         else:
             details.append({"ok": True, "msg": "AI 协作记录已完成"})
+
+    if append_blocking_subagent_details(state, details, "执行 Bug 链路闭环校验"):
+        passed = False
 
     print_result("bug_chain", passed, details, "Bug 根因、方案或任务链路未闭合" if not passed else None)
 

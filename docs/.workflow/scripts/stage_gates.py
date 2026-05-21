@@ -34,6 +34,10 @@ SCRIPTS_DIR   = SCRIPT_FILE.parent
 WORKFLOW_DIR  = SCRIPTS_DIR.parent
 DOCS_DIR      = WORKFLOW_DIR.parent
 PROJECT_ROOT  = DOCS_DIR.parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+from workflow_config import load_project_config as load_project_config_file
+from workflow_config import load_workflow_config as load_workflow_config_file
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
 BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
@@ -563,24 +567,11 @@ DEFAULT_BUILD_CONFIG = {
     "build_record_keyword": "Jar",
 }
 
-DEFAULT_WORKFLOW_CONFIG = {
-    "context_warning_threshold": 50,
-    "context_compact_threshold": 70,
-    "subagent_retry_threshold": 3,
-    "feature_flow_enabled": True,
-    "bugfix_flow_enabled": True,
-}
-
-
 def load_project_config() -> dict:
-    config_file = WORKFLOW_DIR / "project_config.json"
-    if not config_file.exists():
-        return {}
-    try:
-        return json.loads(config_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    raw = load_project_config_file(WORKFLOW_DIR)
+    if not raw and (WORKFLOW_DIR / "project_config.json").exists():
         print(yellow("project_config.json 解析失败，使用默认 Java/Maven 构建配置"))
-        return {}
+    return raw
 
 
 def load_build_config() -> dict:
@@ -601,19 +592,7 @@ def load_build_config() -> dict:
 
 
 def load_workflow_config() -> dict:
-    raw = load_project_config()
-    workflow = raw.get("workflow") if isinstance(raw, dict) else None
-    merged = dict(DEFAULT_WORKFLOW_CONFIG)
-    if not isinstance(workflow, dict):
-        return merged
-
-    for key, default in DEFAULT_WORKFLOW_CONFIG.items():
-        value = workflow.get(key)
-        if isinstance(default, bool) and isinstance(value, bool):
-            merged[key] = value
-        elif isinstance(default, int) and isinstance(value, int) and value >= 0:
-            merged[key] = value
-    return merged
+    return load_workflow_config_file(WORKFLOW_DIR)
 
 
 def _normalize_action_text(value: str) -> str:
@@ -1925,6 +1904,7 @@ def cmd_progress(fdir: Path, note_input: str):
     check_human_approval_pending(s)
     data = parse_required_json_object(note_input, "progress")
     validate_progress_data(data)
+    ensure_no_blocking_subagent_entries(s, "记录进展")
 
     current_step = s.get("current_step", "?")
     in_progress = s.get("in_progress_step")

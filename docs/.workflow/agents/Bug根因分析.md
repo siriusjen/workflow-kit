@@ -1,7 +1,7 @@
 ---
 name: Bug根因分析
 description: 在 B1 诊断阶段定位可复现事实、影响范围和根因链。
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
 model: sonnet
 prerequisites:
   - path: 01-问题描述.md

@@ -112,7 +112,7 @@ python3 docs/.workflow/scripts/validators.py rdtv_closure <FID>
 python3 docs/.workflow/scripts/stage_gates.py ctx-update <FID> <百分比>
 ```
 
-S8 构建产物默认按 Java/Maven/Jar 校验，配置在 `docs/.workflow/project_config.json`；非 Java 项目必须按实际产物覆盖。
+S8 构建产物默认按 Java/Maven/Jar 校验，配置在 `docs/.workflow/project_config.json`；非 Java 项目必须按实际产物覆盖。`project_config.json` 的 `workflow` 段还包含上下文提醒阈值、压缩阈值、子Agent修正阈值、feature/bugfix 流程启用开关，详见 `docs/.workflow/工作流规范.md` 的子Agent派遣原则。
 技术方案阶段必须先输出 `01-需求确认/需求事实锚点.json`，再输出 `02-技术方案/代码影响点与依赖逻辑清单.md` 和 `02-技术方案/技术方案一致性检查.json`，避免方案自洽但偏离需求或现有实现。
 
 ## Bug 处理 Skill 调度表
@@ -168,7 +168,7 @@ Skill 定义文件: `docs/.workflow/skills/bugfix/bug-b{n}-*/SKILL.md`
 - 未生成当前阶段上下文包，不得派遣子 Agent。
 - `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-start` 会输出 `dispatch_id`，并行或同名子 Agent 返回时 `subagent-done` 必须携带该值；`output_paths` 必须存在。
 - 子 Agent 定义文件 frontmatter 声明 `prerequisites` 时，`subagent-start` 必须先校验其中的 `path` 或 `glob` 是否存在。
-- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止把步骤标记为 `done`，也禁止执行 `auto` 或普通人工锚点；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程。
+- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止把步骤标记为 `done`，也禁止执行 `auto` 或普通人工锚点；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程；`approve-correction` 不受该阻断限制。
 - 每个 `implement-Txx` 完成前必须增量更新 `04-实现记录/*.md`，并在 `step-done` 的 `outputs` 中列出该实现记录。
 - 单元测试、聚焦测试通过后必须按 `project_config.json` 打包构建产物；构建完成后提示人工本地启动/部署服务，并通过真实 HTTP API 请求完成验收；未执行 `artifact-package-done` 和 `http-acceptance-done` 不允许 `approve-release`。
 

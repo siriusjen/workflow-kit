@@ -3,6 +3,8 @@ name: HTTP接口验收
 description: 在 Jar 包构建完成、人工本地启动服务后，基于真实 HTTP API 请求验证功能关键路径，并写入 HTTP 验收记录。
 tools: Read, Bash, Grep, Glob, Write
 model: sonnet
+prerequisites:
+  - glob: 05-测试验证/构建记录-*.md
 ---
 
 # HTTP接口验收子Agent

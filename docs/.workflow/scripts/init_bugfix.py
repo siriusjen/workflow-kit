@@ -23,6 +23,9 @@ SCRIPTS_DIR  = SCRIPT_FILE.parent
 WORKFLOW_DIR = SCRIPTS_DIR.parent
 DOCS_DIR     = WORKFLOW_DIR.parent
 PROJECT_ROOT = DOCS_DIR.parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+from workflow_config import load_workflow_config as load_workflow_config_file
 BUGFIX_ROOT  = DOCS_DIR / "02-bug-fix"
 
 
@@ -35,6 +38,16 @@ def yellow(t):   return color(t, "33")
 def cyan(t):     return color(t, "36")
 def bold(t):     return color(t, "1")
 def red(t):      return color(t, "31")
+
+
+def load_workflow_config() -> dict:
+    return load_workflow_config_file(WORKFLOW_DIR)
+
+
+def ensure_bugfix_flow_enabled():
+    if not load_workflow_config()["bugfix_flow_enabled"]:
+        print(red("❌ project_config.json 已禁用 bugfix 流程，禁止初始化新 Bug Fix。"))
+        sys.exit(1)
 
 
 BUG_STAGE_DISPLAY = {
@@ -130,6 +143,7 @@ def build_bug_state(bf_number: str, problem_name: str, date: str, workflow_mode:
 
 def create_bugfix(problem_name: str, workflow_mode: str = "standard"):
     """创建 Bug Fix 目录骨架"""
+    ensure_bugfix_flow_enabled()
     date = today()
     date_dir = BUGFIX_ROOT / date
     date_dir.mkdir(parents=True, exist_ok=True)
