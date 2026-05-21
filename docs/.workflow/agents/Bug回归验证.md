@@ -1,3 +1,14 @@
+---
+name: Bug回归验证
+description: 在 B4 验证阶段验证修复生效，并检查核心流程回归风险。
+tools: Read, Grep, Glob, Bash
+model: sonnet
+prerequisites:
+  - path: 05-任务拆解.md
+  - path: 06-执行记录.md
+  - path: 事实锚点.json
+---
+
 # Bug回归验证 子Agent
 
 ## 绑定 Skill

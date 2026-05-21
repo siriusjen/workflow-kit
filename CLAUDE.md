@@ -6,7 +6,7 @@
 
 本项目采用大模型自动化开发工作流 v2.0。主 Agent 负责决策、指挥、检查和修正；具体需求交叉验证、技术方案、落地计划、任务拆分、任务实现、测试验证、HTTP 接口验收、全链路验证按标准流程必须交给 `docs/.workflow/agents/` 中定义的子 Agent 或并行 Agent。
 
-如果当前 Claude Code 环境无法实际派遣子 Agent，必须先记录 `exception subagent-fallback "原因"`，再按同一检查清单由主线临时执行并记录。不得静默跳过子 Agent 纪律。
+如果当前 Claude Code 环境无法实际派遣子 Agent，或未获得明确授权，必须先记录 `exception subagent-fallback "原因"`，再按同一检查清单由主线临时执行并记录。不得静默跳过子 Agent 纪律。
 
 ## 启动协议
 
@@ -18,6 +18,7 @@
 4. 如涉及项目知识沉淀，读 `docs/.workflow/知识库规范.md`。
 5. Java 相关开发还要读 `docs/.workflow/Java开发规范.md` 的速查卡；非 Java 项目按项目覆盖层改为对应语言规范。
 6. 如存在进行中的 feature，读 `state.json` 后先检查 `context_manifest.current_packet`；若为空或阶段不匹配，先运行 `context_packets.py build` 生成当前阶段上下文包。
+7. 恢复处理中断时，必须检查四项：未闭合的 `in_progress_step`、`subagent_log` 中未返回或失败的派遣、最近 `exception_log`、当前阶段上下文包。
 
 默认目录约定：
 
@@ -38,11 +39,11 @@
 - 执行 `python3 docs/.workflow/scripts/init_feature.py "功能名"`
 - 进入双轨入口流程
 
-如收到 Bug：
+如收到新 Bug 描述（如包含“报错/异常/错误/导出失败/不准/崩了”等特征词意图，且非 BFxx 格式）：
 
-- 执行 `python3 docs/.workflow/scripts/init_bugfix.py "问题名"`
-- 读 `docs/.workflow/bug修复规范.md`
-- 按 Bug 修复流程推进
+- 主 Agent 必须进行前置智能拦截，不允许静默创建目录或文档。
+- 拦截并询问：“检测到 Bug 描述，即将为您启动自动排查流程 BFxx，是否继续？”。
+- 仅当用户明确回复“继续/确认/yes”时，才调用 `python3 docs/.workflow/scripts/init_bugfix.py "<问题描述>"` 初始化骨架，开启 B1-诊断阶段。
 
 ## 工作流脚本
 
@@ -125,6 +126,8 @@ S8 构建产物默认按 Java/Maven/Jar 校验，配置在 `docs/.workflow/proje
 - `step-done` 必须有对应未闭合的 `step-start`，并提供非空 `key_conclusions` 与 `next_step`。
 - 未生成当前阶段上下文包，不得派遣子 Agent。
 - `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-start` 会输出 `dispatch_id`，并行或同名子 Agent 返回时 `subagent-done` 必须携带该值；`output_paths` 必须存在。
+- 子 Agent 定义文件 frontmatter 声明 `prerequisites` 时，`subagent-start` 必须先校验其中的 `path` 或 `glob` 是否存在。
+- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止把步骤标记为 `done`，也禁止执行 `auto` 或普通人工锚点；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程。
 - 每个 `implement-Txx` 完成前必须增量更新 `04-实现记录/*.md`，并在 `step-done` 的 `outputs` 中列出该实现记录。
 - 单元测试、聚焦测试通过后必须按 `project_config.json` 打包构建产物；构建完成后提示人工本地启动/部署服务，并通过真实 HTTP API 请求完成验收；未执行 `artifact-package-done` 和 `http-acceptance-done` 不允许 `approve-release`。
 

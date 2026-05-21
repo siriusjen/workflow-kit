@@ -35,6 +35,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 4. 如涉及项目知识沉淀，读 `docs/.workflow/知识库规范.md`。
 5. Java 相关开发还要读 `docs/.workflow/Java开发规范.md` 的附录 A 四原则速记卡。
 6. 如存在进行中的 feature，读 `state.json` 后先检查 `context_manifest.current_packet`；若为空或阶段不匹配，先运行 `context_packets.py build` 生成当前阶段上下文包。
+7. 恢复处理中断时，必须检查四项：未闭合的 `in_progress_step`、`subagent_log` 中未返回或失败的派遣、最近 `exception_log`、当前阶段上下文包。
 
 默认目录约定：
 - 功能需求归档到 `docs/01-features/Fxx-功能名/00-需求输入/`。
@@ -51,6 +52,11 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - 询问输入模式：A=已有文档，B=只有想法
 - 执行 `python3 docs/.workflow/scripts/init_feature.py "功能名"`
 - 进入双轨入口流程
+
+如收到新 Bug 描述（如包含“报错/异常/错误/导出失败/不准/崩了”等特征词意图，且非 BFxx 格式）：
+- 主 Agent 必须进行前置智能拦截，不允许静默创建目录或文档。
+- 拦截并询问：“检测到 Bug 描述，即将为您启动自动排查流程 BFxx，是否继续？”。
+- 仅当用户明确回复“继续/确认/yes”时，才调用 `python3 docs/.workflow/scripts/init_bugfix.py "<问题描述>"` 初始化骨架，开启 B1-诊断阶段。
 
 ## 工作流脚本
 
@@ -161,6 +167,8 @@ Skill 定义文件: `docs/.workflow/skills/bugfix/bug-b{n}-*/SKILL.md`
 - `step-done` 必须有对应未闭合的 `step-start`，并提供非空 `key_conclusions` 与 `next_step`。
 - 未生成当前阶段上下文包，不得派遣子 Agent。
 - `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-start` 会输出 `dispatch_id`，并行或同名子 Agent 返回时 `subagent-done` 必须携带该值；`output_paths` 必须存在。
+- 子 Agent 定义文件 frontmatter 声明 `prerequisites` 时，`subagent-start` 必须先校验其中的 `path` 或 `glob` 是否存在。
+- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止把步骤标记为 `done`，也禁止执行 `auto` 或普通人工锚点；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程。
 - 每个 `implement-Txx` 完成前必须增量更新 `04-实现记录/*.md`，并在 `step-done` 的 `outputs` 中列出该实现记录。
 - 单元测试、聚焦测试通过后必须按 `project_config.json` 打包构建产物；构建完成后提示人工本地启动/部署服务，并通过真实 HTTP API 请求完成验收；未执行 `artifact-package-done` 和 `http-acceptance-done` 不允许 `approve-release`。
 

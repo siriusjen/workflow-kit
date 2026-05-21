@@ -1,3 +1,12 @@
+---
+name: Bug独立复核
+description: 独立复核 bug 根因、方案、任务、执行和验证之间是否闭环。
+tools: Read, Grep, Glob
+model: sonnet
+prerequisites:
+  - path: 事实锚点.json
+---
+
 # Bug独立复核 子Agent
 
 ## 绑定 Skill

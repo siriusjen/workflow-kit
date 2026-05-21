@@ -221,6 +221,7 @@ python3 docs/.workflow/scripts/stage_gates.py approve BF01 approve-rootcause
 - `subagent-start` 必须校验 `context_packet` 存在、等于 `state.json.context_manifest.current_packet`，且登记在 `context_manifest.packets`。
 - `subagent-start` 必须提供非空 `input_paths`、`output_paths`、`instruction`；`input_paths` 必须存在。
 - `subagent-done` 必须携带 `dispatch_id`，并校验 `output_paths` 已存在。
+- 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止执行 `auto`、`approve-*` 或把步骤标记为 `done`；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程。
 
 ### step-done 规范检查结论
 

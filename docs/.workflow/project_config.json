@@ -5,5 +5,12 @@
     "artifact_label": "Jar",
     "build_command": "mvn -DskipTests package",
     "build_record_keyword": "Jar"
+  },
+  "workflow": {
+    "context_warning_threshold": 50,
+    "context_compact_threshold": 70,
+    "subagent_retry_threshold": 3,
+    "feature_flow_enabled": true,
+    "bugfix_flow_enabled": true
   }
 }

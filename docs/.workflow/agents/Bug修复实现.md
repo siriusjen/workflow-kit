@@ -1,3 +1,15 @@
+---
+name: Bug修复实现
+description: 在 B3 修复阶段按已批准根因、方案和任务拆解执行最小范围修复。
+tools: Read, Grep, Glob, Write, Edit, Bash
+model: sonnet
+prerequisites:
+  - path: 03-根因分析.md
+  - path: 04-解决方案.md
+  - path: 05-任务拆解.md
+  - path: 事实锚点.json
+---
+
 # Bug修复实现 子Agent
 
 ## 绑定 Skill

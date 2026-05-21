@@ -330,6 +330,21 @@ def recover_bugfix(bug_id: str):
     blocked = state.get("blocked_actions", [])
     current_packet = state.get("context_manifest", {}).get("current_packet") or "未生成"
     workflow_mode = state.get("workflow_mode", "lightweight") or "lightweight"
+    in_progress = state.get("in_progress_step")
+    current_stage = state.get("current_stage")
+    current_step = in_progress.get("step") if isinstance(in_progress, dict) else state.get("current_step")
+    subagent_log = state.get("subagent_log", [])
+    latest_subagents = {}
+    for entry in subagent_log:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("stage") == current_stage and entry.get("step") == current_step and entry.get("subagent"):
+            latest_subagents[entry["subagent"]] = entry
+    blocking_subagents = [
+        entry for entry in latest_subagents.values()
+        if entry.get("status") in {"dispatched", "failed", "partial", "blocked"}
+    ]
+    exceptions = state.get("exception_log", [])
 
     print()
     print(bold(cyan("─── 恢复确认卡 ───────────────────────────────────────")))
@@ -343,11 +358,19 @@ def recover_bugfix(bug_id: str):
         return str(item)
 
     print(f"已完成步骤: {', '.join(_fmt_step(item) for item in completed) or '无'}")
-    print(f"当前进行中步骤: 无")
+    print(f"当前进行中步骤: {in_progress.get('step', '无') if isinstance(in_progress, dict) else '无'}")
     print(f"待办步骤: {', '.join(pending) or '无'}")
     print(f"关键结论:")
     print(f"  - bug 流程需要 machine-state 和恢复包，不能只靠 markdown 表格")
     print(f"  - README 索引写入必须幂等")
+    if blocking_subagents:
+        print("子Agent阻断项:")
+        for entry in blocking_subagents:
+            print(f"  - {entry.get('subagent')} [{entry.get('status')}] dispatch_id={entry.get('dispatch_id')}")
+    if exceptions:
+        print("最近例外:")
+        for entry in exceptions[-3:]:
+            print(f"  - {entry.get('type', '?')}: {entry.get('detail', '')}")
     print(f"当前小步下一步: {allowed[0] if allowed else '无'}")
     print(f"当前合法下一动作:")
     for action in allowed or ["无"]:

@@ -563,16 +563,30 @@ DEFAULT_BUILD_CONFIG = {
     "build_record_keyword": "Jar",
 }
 
+DEFAULT_WORKFLOW_CONFIG = {
+    "context_warning_threshold": 50,
+    "context_compact_threshold": 70,
+    "subagent_retry_threshold": 3,
+    "feature_flow_enabled": True,
+    "bugfix_flow_enabled": True,
+}
 
-def load_build_config() -> dict:
+
+def load_project_config() -> dict:
     config_file = WORKFLOW_DIR / "project_config.json"
     if not config_file.exists():
-        print(yellow("使用默认 Java/Maven 构建配置"))
-        return dict(DEFAULT_BUILD_CONFIG)
+        return {}
     try:
-        raw = json.loads(config_file.read_text(encoding="utf-8"))
+        return json.loads(config_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         print(yellow("project_config.json 解析失败，使用默认 Java/Maven 构建配置"))
+        return {}
+
+
+def load_build_config() -> dict:
+    raw = load_project_config()
+    if not raw:
+        print(yellow("使用默认 Java/Maven 构建配置"))
         return dict(DEFAULT_BUILD_CONFIG)
     build = raw.get("build")
     if not isinstance(build, dict):
@@ -583,6 +597,22 @@ def load_build_config() -> dict:
         value = build.get(key)
         if isinstance(value, str) and value.strip():
             merged[key] = value.strip()
+    return merged
+
+
+def load_workflow_config() -> dict:
+    raw = load_project_config()
+    workflow = raw.get("workflow") if isinstance(raw, dict) else None
+    merged = dict(DEFAULT_WORKFLOW_CONFIG)
+    if not isinstance(workflow, dict):
+        return merged
+
+    for key, default in DEFAULT_WORKFLOW_CONFIG.items():
+        value = workflow.get(key)
+        if isinstance(default, bool) and isinstance(value, bool):
+            merged[key] = value
+        elif isinstance(default, int) and isinstance(value, int) and value >= 0:
+            merged[key] = value
     return merged
 
 
@@ -601,6 +631,48 @@ def _step_name_violates_blocked(step_name: str, blocked_actions) -> Optional[str
         if normalized_blocked == "writecode" and normalized_step.startswith("implement"):
             return item
     return None
+
+
+def latest_subagent_entries_for_current_step(state: dict) -> list[dict]:
+    target_stage = state.get("current_stage")
+    in_progress = state.get("in_progress_step")
+    target_step = in_progress.get("step") if isinstance(in_progress, dict) else state.get("current_step")
+    latest_by_subagent = {}
+
+    for entry in state.get("subagent_log", []):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("stage") != target_stage or entry.get("step") != target_step:
+            continue
+        subagent = entry.get("subagent")
+        if not subagent:
+            continue
+        latest_by_subagent[subagent] = entry
+
+    return list(latest_by_subagent.values())
+
+
+def blocking_subagent_entries_for_current_step(state: dict) -> list[dict]:
+    blocking_statuses = {"dispatched", "failed", "partial", "blocked"}
+    return [
+        entry for entry in latest_subagent_entries_for_current_step(state)
+        if entry.get("status") in blocking_statuses
+    ]
+
+
+def ensure_no_blocking_subagent_entries(state: dict, action_label: str):
+    blocking_entries = blocking_subagent_entries_for_current_step(state)
+    if not blocking_entries:
+        return
+
+    print(red(f"❌ 当前步骤存在未闭合或未通过的子Agent，禁止{action_label}。"))
+    for entry in blocking_entries:
+        print(red(
+            f"  ✗ {entry.get('subagent', '?')} "
+            f"[{entry.get('status', '?')}] dispatch_id={entry.get('dispatch_id', '?')}"
+        ))
+    print(yellow("请先让对应子Agent返回 done，或记录当前步骤 failed/blocked 后走修正锚点。"))
+    sys.exit(1)
 
 
 def generate_dispatch_id() -> str:
@@ -704,13 +776,30 @@ def validate_step_done_data(data: dict):
         sys.exit(1)
 
 
-def resolve_output_path(fdir: Path, output: str) -> Path:
+def resolve_output_path(fdir: Path, output: str, state: Optional[dict] = None) -> Path:
     p = Path(output)
     if p.is_absolute():
         return p
     root_candidate = PROJECT_ROOT / output
     feature_candidate = fdir / output
-    if root_candidate.exists() or output.startswith(("docs/", "src/", "pom.xml")):
+    code_root = None
+    if isinstance(state, dict):
+        runtime = state.get("workflow_runtime")
+        if isinstance(runtime, dict):
+            code_root_value = runtime.get("code_worktree_path")
+            if isinstance(code_root_value, str) and code_root_value.strip():
+                code_root = Path(code_root_value.strip())
+    code_candidate = code_root / output if code_root else None
+    is_code_output = output.startswith(("src/", "pom.xml"))
+    if is_code_output and code_candidate and code_candidate.exists():
+        return code_candidate
+    if root_candidate.exists():
+        return root_candidate
+    if code_candidate and code_candidate.exists():
+        return code_candidate
+    if feature_candidate.exists():
+        return feature_candidate
+    if output.startswith(("docs/", "src/", "pom.xml")):
         return root_candidate
     return feature_candidate
 
@@ -945,6 +1034,63 @@ def validate_subagent_result(data: dict):
         sys.exit(1)
 
 
+def _strip_yaml_value(value: str) -> str:
+    value = value.strip()
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        return value[1:-1]
+    return value
+
+
+def parse_agent_prerequisites(agent_file: Path) -> list[dict]:
+    try:
+        content = agent_file.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    if not content.startswith("---"):
+        return []
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return []
+
+    prerequisites = []
+    in_block = False
+    for line in parts[1].splitlines():
+        if line.strip() == "prerequisites:":
+            in_block = True
+            continue
+        if in_block and line and not line.startswith((" ", "\t", "-")):
+            break
+        if not in_block:
+            continue
+        match = re.match(r"\s*-\s*(path|glob)\s*:\s*(.+?)\s*$", line)
+        if match:
+            prerequisites.append({
+                "type": match.group(1),
+                "value": _strip_yaml_value(match.group(2)),
+            })
+    return prerequisites
+
+
+def validate_agent_prerequisites(fdir: Path, agent_file: Path):
+    missing = []
+    for item in parse_agent_prerequisites(agent_file):
+        value = item["value"]
+        if item["type"] == "path":
+            if not resolve_output_path(fdir, value).exists():
+                missing.append(f"path: {value}")
+        elif item["type"] == "glob":
+            matches = list(fdir.glob(value))
+            if not matches:
+                missing.append(f"glob: {value}")
+
+    if missing:
+        print(red(f"❌ 子Agent前置条件未满足: {agent_file.name}"))
+        for item in missing:
+            print(red(f"  ✗ {item}"))
+        print(yellow("请先完成上一阶段产物，或修正 subagent-start 的输入路径后再派遣。"))
+        sys.exit(1)
+
+
 def validate_auto_prereqs(fdir: Path, state: dict, key: str):
     if key == "openspec-decision-recorded":
         records = sorted((fdir / "01-需求确认").glob("OpenSpec决策记录-*.md"))
@@ -1126,6 +1272,18 @@ def find_workflow_dir(workflow_id: str) -> Path:
 
 def workflow_kind(state: dict) -> str:
     return state.get("workflow_kind") or ("bugfix" if state.get("bug_id") else "feature")
+
+
+def ensure_workflow_enabled(fdir: Path):
+    state = load_state(fdir)
+    workflow_cfg = load_workflow_config()
+    kind = workflow_kind(state)
+    if kind == "feature" and not workflow_cfg["feature_flow_enabled"]:
+        print(red("❌ project_config.json 已禁用 feature 流程。"))
+        sys.exit(1)
+    if kind == "bugfix" and not workflow_cfg["bugfix_flow_enabled"]:
+        print(red("❌ project_config.json 已禁用 bugfix 流程。"))
+        sys.exit(1)
 
 
 def workflow_id(state: dict) -> str:
@@ -1465,11 +1623,11 @@ def mark_in_progress_review(state: dict, review: dict):
     in_progress["recovery_review"] = review
 
 
-def build_recovery_review_for_outputs(fdir: Path, outputs, done_definition=None):
+def build_recovery_review_for_outputs(fdir: Path, outputs, done_definition=None, state: Optional[dict] = None):
     checks = []
     all_present = True
     for output in outputs or []:
-        output_path = resolve_output_path(fdir, output)
+        output_path = resolve_output_path(fdir, output, state)
         exists = output_path.exists() and (output_path.is_dir() or output_path.stat().st_size > 0)
         checks.append({
             "output": output,
@@ -1572,6 +1730,8 @@ def update_recovery_card(fdir: Path, state: dict):
     blocked = state.get("blocked_actions", [])
     exc = state.get("exception_log", [])
     risk = exc[-1].get("detail", "无") if exc else "无"
+    workflow_cfg = load_workflow_config()
+    compact_threshold = workflow_cfg["context_compact_threshold"]
 
     completed_str = ", ".join(
         (c.get("step", "?") if isinstance(c, dict) else str(c)) + " ✓"
@@ -1613,7 +1773,7 @@ def update_recovery_card(fdir: Path, state: dict):
     card += f"恢复检查: {review_summary}\n"
     card += f"明确不能做: {', '.join(blocked) if blocked else '无限制'}\n"
     card += f"风险项: {risk}\n"
-    card += f"上下文用量: {ctx}%（{'⚠️ 建议/compact' if ctx > 70 else '健康'}）\n"
+    card += f"上下文用量: {ctx}%（{'⚠️ 建议/compact' if ctx > compact_threshold else '健康'}）\n"
     card += "---\n确认恢复完成，等待指令。\n```"
 
     pattern = r"\n*## 当前恢复确认卡\n\n```.*?```\n*"
@@ -1865,6 +2025,8 @@ def cmd_approve(fdir: Path, action: str, note: str = ""):
         print(red("❌ 当前存在未 step-done 的步骤，禁止执行人工锚点。"))
         print(red(f"  当前进行中: {s['in_progress_step'].get('step')}"))
         sys.exit(1)
+    if action != "approve-correction":
+        ensure_no_blocking_subagent_entries(s, "执行人工锚点")
     transitions = BUG_APPROVAL_TRANSITIONS if workflow_kind(s) == "bugfix" else APPROVAL_TRANSITIONS
     if action not in transitions:
         print(red(f"未知口令: {action}"))
@@ -2001,6 +2163,8 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
         print(red(f"❌ 当前 in_progress_step 与 step-done 不一致: {step_name}"))
         print(red(f"  当前进行中: {(in_progress or {}).get('step', '无')}"))
         sys.exit(1)
+    if data.get("status", "done") == "done":
+        ensure_no_blocking_subagent_entries(s, "将步骤标记为 done")
     step_stage = started_entry.get("stage") if started_entry else s["current_stage"]
 
     entry = {
@@ -2021,7 +2185,7 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
 
     outputs = entry.get("outputs", [])
     done_definition = data.get("done_definition", [])
-    mark_in_progress_review(s, build_recovery_review_for_outputs(fdir, outputs, done_definition))
+    mark_in_progress_review(s, build_recovery_review_for_outputs(fdir, outputs, done_definition, s))
     if outputs and not s.get("in_progress_step", {}).get("recovery_review", {}).get("all_outputs_present", True):
         print(red("❌ step-done 失败：存在已声明输出但未通过读回验证。"))
         print(yellow("请先把输出文件写入磁盘并读回确认非空，再继续关闭当前步骤。"))
@@ -2061,15 +2225,18 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
 
 def cmd_ctx_update(fdir: Path, pct: int):
     s = load_state(fdir)
+    workflow_cfg = load_workflow_config()
+    warning_threshold = workflow_cfg["context_warning_threshold"]
+    compact_threshold = workflow_cfg["context_compact_threshold"]
     log = s.setdefault("current_step_log", {})
     log["context_usage_pct"] = pct
-    log["compact_recommended"] = pct > 70
+    log["compact_recommended"] = pct > compact_threshold
     save_state(fdir, s)
     update_recovery_card(fdir, s)
 
-    if pct > 70:
+    if pct > compact_threshold:
         print(yellow(f"⚠️ 上下文用量 {pct}% — 建议立即 /compact"))
-    elif pct > 50:
+    elif pct > warning_threshold:
         print(yellow(f"上下文用量 {pct}% — 接近阈值"))
     else:
         print(green(f"上下文用量 {pct}% — 健康"))
@@ -2083,6 +2250,7 @@ def cmd_subagent_start(fdir: Path, subagent_name: str, dispatch_input: str):
     data = parse_required_json_object(dispatch_input, "subagent-start")
     validate_subagent_dispatch(s, subagent_name, data)
     validate_context_packet_for_subagent(fdir, s, data)
+    validate_agent_prerequisites(fdir, WORKFLOW_DIR / "agents" / f"{subagent_name}.md")
     validate_subagent_paths(fdir, "input_paths", data.get("input_paths", []), True)
     dispatch_id = generate_dispatch_id()
     entry = {
@@ -2138,7 +2306,8 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
         "corrections": data.get("corrections", [])
     })
     correction_count = len(data.get("corrections", []))
-    if correction_count >= 3:
+    retry_threshold = load_workflow_config()["subagent_retry_threshold"]
+    if correction_count >= retry_threshold:
         s.setdefault("exception_log", []).append({
             "type": "correction-threshold",
             "detail": f"{subagent_name} 修正次数达到 {correction_count} 次",
@@ -2157,7 +2326,7 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
     print(green(f"✅ 子Agent 返回已记录: {subagent_name}"))
     if target.get("summary"):
         print(cyan(f"   摘要: {target['summary'][:100]}"))
-    if correction_count >= 3:
+    if correction_count >= retry_threshold:
         print(red(f"❌ {subagent_name} 修正次数已达 {correction_count} 次，需要触发人工锚点。"))
         print(yellow(f"   命令: python3 docs/.workflow/scripts/stage_gates.py approve {workflow_id(s)} approve-correction"))
 
@@ -2171,6 +2340,7 @@ def cmd_auto(fdir: Path, key: str):
         print(red("❌ 当前存在未 step-done 的步骤，禁止自动推进状态。"))
         print(red(f"  当前进行中: {s['in_progress_step'].get('step')}"))
         sys.exit(1)
+    ensure_no_blocking_subagent_entries(s, "自动推进状态")
     transitions = BUG_AUTO_TRANSITIONS if workflow_kind(s) == "bugfix" else AUTO_TRANSITIONS
     if key not in transitions:
         print(red(f"未知自动转移键: {key}"))
@@ -2371,6 +2541,11 @@ def cmd_status(fdir: Path):
         print(bold(f"子Agent 派遣记录 ({len(sa_log)} 次):"))
         for sa in sa_log[-3:]:
             print(f"  [{sa.get('subagent')}] {sa.get('status')} - {sa.get('summary','')[:60]}")
+        blocking = blocking_subagent_entries_for_current_step(s)
+        if blocking:
+            print(yellow("  当前步骤阻断项:"))
+            for sa in blocking:
+                print(yellow(f"    ✗ {sa.get('subagent')} [{sa.get('status')}] {sa.get('dispatch_id')}"))
         print()
 
 
@@ -2386,6 +2561,7 @@ def main():
 
     fid = sys.argv[2]
     fdir = find_workflow_dir(fid)
+    ensure_workflow_enabled(fdir)
 
     if cmd == "check":
         cmd_check(fdir)
