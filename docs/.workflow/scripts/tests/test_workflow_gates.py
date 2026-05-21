@@ -99,6 +99,46 @@ class WorkflowGateTests(unittest.TestCase):
 
         self.assertFalse(passed)
 
+    def test_progress_fails_when_current_step_has_blocking_subagent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fdir = Path(tmp) / "F99-Test"
+            write_json(fdir / "state.json", {
+                "workflow_kind": "feature",
+                "feature_id": "F99",
+                "current_stage": "S6-实现",
+                "current_step": "implement-T01",
+                "in_progress_step": {
+                    "step": "implement-T01",
+                    "status": "in_progress",
+                    "started_at": "2026-05-21T10:00:00+08:00",
+                    "goal": "实现 T01",
+                    "expected_outputs": ["04-实现记录/实现记录-20260521-T01.md"],
+                    "done_definition": ["实现记录已写入"],
+                    "next_step": "等待子Agent返回",
+                },
+                "subagent_log": [{
+                    "dispatch_id": "d-test",
+                    "subagent": "任务实现",
+                    "stage": "S6-实现",
+                    "step": "implement-T01",
+                    "status": "failed",
+                }],
+            })
+            note = json.dumps({
+                "completed_action": "整理了实现进展",
+                "key_conclusions": ["子Agent仍失败"],
+                "outputs": ["04-实现记录/实现记录-20260521-T01.md"],
+                "verification": ["未通过"],
+                "next_step": "重派子Agent",
+            }, ensure_ascii=False)
+
+            with self.assertRaises(SystemExit) as raised:
+                with redirect_stdout(StringIO()) as output:
+                    stage_gates.cmd_progress(fdir, note)
+
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn("禁止记录进展", output.getvalue())
+
     def test_bug_chain_fails_when_current_step_has_blocking_subagent(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = Path(tmp) / "BF99-Test"
