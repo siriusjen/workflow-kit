@@ -50,6 +50,14 @@ def resolve_features_root() -> Path:
 
 FEATURES_ROOT = resolve_features_root()
 
+DEFAULT_WORKFLOW_CONFIG = {
+    "context_warning_threshold": 50,
+    "context_compact_threshold": 70,
+    "subagent_retry_threshold": 3,
+    "feature_flow_enabled": True,
+    "bugfix_flow_enabled": True,
+}
+
 
 # ── 工具 ──────────────────────────────────────────────────────────────────────
 
@@ -132,6 +140,27 @@ def atomic_write_text(path: Path, content: str):
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(content, encoding="utf-8")
     os.replace(tmp, path)
+
+
+def load_workflow_config() -> dict:
+    config_file = WORKFLOW_DIR / "project_config.json"
+    merged = dict(DEFAULT_WORKFLOW_CONFIG)
+    if not config_file.exists():
+        return merged
+    try:
+        raw = json.loads(config_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return merged
+    workflow = raw.get("workflow")
+    if not isinstance(workflow, dict):
+        return merged
+    for key, default in DEFAULT_WORKFLOW_CONFIG.items():
+        value = workflow.get(key)
+        if isinstance(default, bool) and isinstance(value, bool):
+            merged[key] = value
+        elif isinstance(default, int) and isinstance(value, int) and value >= 0:
+            merged[key] = value
+    return merged
 
 
 def load_json_with_snapshot_fallback(state_file: Path) -> dict:
@@ -552,11 +581,24 @@ def recover(feature_id: str):
     exc = s.get("exception_log", [])
     risk = exc[-1].get("detail", "无") if exc else "无"
     ctx = log.get("context_usage_pct", 0)
+    compact_threshold = load_workflow_config()["context_compact_threshold"]
     current_packet = s.get("context_manifest", {}).get("current_packet") or "未生成"
     stage_display = display_feature_stage(s.get("current_stage", "未知"))
     workflow_mode = feature_workflow_mode(s)
     execution_mode = feature_execution_mode(s)
     input_mode = s.get("input_mode", "?")
+    current_stage = s.get("current_stage")
+    current_step = in_progress.get("step") if isinstance(in_progress, dict) else s.get("current_step")
+    latest_subagents = {}
+    for entry in s.get("subagent_log", []):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("stage") == current_stage and entry.get("step") == current_step and entry.get("subagent"):
+            latest_subagents[entry["subagent"]] = entry
+    blocking_subagents = [
+        entry for entry in latest_subagents.values()
+        if entry.get("status") in {"dispatched", "failed", "partial", "blocked"}
+    ]
 
     print()
     print(bold(cyan("─── 恢复确认卡 ───────────────────────────────────────")))
@@ -578,6 +620,10 @@ def recover(feature_id: str):
     print(f"当前合法下一动作:")
     for a in allowed:
         print(f"  → {a}")
+    if blocking_subagents:
+        print("子Agent阻断项:")
+        for entry in blocking_subagents:
+            print(f"  - {entry.get('subagent')} [{entry.get('status')}] dispatch_id={entry.get('dispatch_id')}")
     if recovery_review:
         if recovery_review.get("all_outputs_present"):
             review_summary = "已检查（预期输出存在，待按完成定义复核）"
@@ -589,7 +635,11 @@ def recover(feature_id: str):
     print(f"恢复检查: {review_summary}")
     print(f"明确不能做: {', '.join(blocked) if blocked else '无限制'}")
     print(f"风险项: {risk}")
-    print(f"上下文用量: {ctx}%（{'⚠️ 建议/compact' if ctx > 70 else '健康'}）")
+    if exc:
+        print("最近例外:")
+        for entry in exc[-3:]:
+            print(f"  - {entry.get('type', '?')}: {entry.get('detail', '')}")
+    print(f"上下文用量: {ctx}%（{'⚠️ 建议/compact' if ctx > compact_threshold else '健康'}）")
     print(bold(cyan("──────────────────────────────────────────────────────")))
     print(green("\n确认恢复完成，等待指令。\n"))
 
