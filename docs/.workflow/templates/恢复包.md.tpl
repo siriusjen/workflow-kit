@@ -9,6 +9,9 @@
 ```
 [恢复确认] {{feature_id}} · init · step 0/1
 当前状态: awaiting-req-input-discussion
+工作流模式: {{workflow_mode}}（流程深度）
+执行模式: {{execution_mode}}（执行方式）
+输入模式: {{input_mode}}
 基线: requirement=未设置 | tech_spec=未设置 | task_split=未设置
 当前上下文包: 未生成
 已完成步骤: 骨架初始化 ✓

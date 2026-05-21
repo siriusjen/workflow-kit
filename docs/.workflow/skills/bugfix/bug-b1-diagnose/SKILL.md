@@ -1,3 +1,8 @@
+---
+name: bug-b1-diagnose
+description: Use when a BF is in B1 diagnosis and needs problem description, impact scope, root cause evidence, or fact anchors.
+---
+
 # bug-b1-diagnose — Bug 诊断阶段
 
 > 所属: `docs/.workflow/skills/bugfix/bug-b1-diagnose`
@@ -43,7 +48,7 @@ python3 docs/.workflow/scripts/stage_gates.py progress {bug_id} \
 
 # 验证写入后关闭步骤
 python3 docs/.workflow/scripts/stage_gates.py step-done {bug_id} "01-问题描述" \
-  '{"outputs":["01-问题描述.md"],"key_conclusions":[...],"next_step":"02-环境与影响范围"}'
+  '{"outputs":["01-问题描述.md"],"key_conclusions":["bug 结论: 问题现象与复现条件已结构化","规范检查结论: [6/6 项通过]"],"next_step":"02-环境与影响范围"}'
 ```
 
 02、03 同理。**必须 step-done 后才进入下一步。**

@@ -3,6 +3,8 @@
 > 由 init_feature.py 自动生成 · 后续由工作流自动维护
 
 **输入模式**: {{input_mode_desc}}
+**工作流模式**: {{workflow_mode}}（流程深度）
+**执行模式**: {{execution_mode}}（执行方式）
 **当前阶段**: init — 等待需求输入讨论
 **当前状态**: 骨架已创建
 

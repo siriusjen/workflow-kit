@@ -4,6 +4,7 @@ init_bugfix.py — Bug 修复目录初始化脚本 v1.0
 
 用法：
   python3 init_bugfix.py "问题名称"
+  python3 init_bugfix.py --mode lightweight "问题名称"
   python3 init_bugfix.py --list              # 查看今天的 BF 列表
   python3 init_bugfix.py --list-all          # 查看所有日期的 BF 列表
   python3 init_bugfix.py --recover BF01      # 输出恢复确认卡
@@ -36,6 +37,19 @@ def bold(t):     return color(t, "1")
 def red(t):      return color(t, "31")
 
 
+BUG_STAGE_DISPLAY = {
+    "B1-诊断": "分析中",
+    "B2-方案": "修复方案",
+    "B3-修复": "修复中",
+    "B4-验证": "验证",
+    "done": "已关闭",
+}
+
+
+def display_bug_stage(stage: str) -> str:
+    return BUG_STAGE_DISPLAY.get(stage, stage)
+
+
 def next_bf_number() -> str:
     """扫描全部日期目录，返回全局下一个 BF 编号。"""
     if not BUGFIX_ROOT.exists():
@@ -52,14 +66,19 @@ def next_bf_number() -> str:
     if not existing:
         return "BF01"
     return f"BF{max(existing) + 1:02d}"
-def load_template(name: str, bf_number: str, problem_name: str, date: str) -> str:
+def load_template(name: str, bf_number: str, problem_name: str, date: str, workflow_mode: str) -> str:
     tpl_path = PROJECT_ROOT / "docs/.workflow/templates/bug-fix" / name
     if not tpl_path.exists():
         print(red(f"错误: 模版文件不存在 {tpl_path}"))
         sys.exit(1)
     content = tpl_path.read_text(encoding="utf-8")
-    return content.replace("{bf_number}", bf_number).replace("{problem_name}", problem_name).replace("{date}", date)
-def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
+    return (
+        content.replace("{bf_number}", bf_number)
+        .replace("{problem_name}", problem_name)
+        .replace("{date}", date)
+        .replace("{workflow_mode}", workflow_mode)
+    )
+def build_bug_state(bf_number: str, problem_name: str, date: str, workflow_mode: str) -> dict:
     return {
         "_comment": "唯一权威状态文件，由脚本和校验器维护",
         "spec_version": "1.1",
@@ -67,6 +86,7 @@ def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
         "bug_id": bf_number,
         "bug_name": problem_name,
         "date": date,
+        "workflow_mode": workflow_mode,
         "created_at": now_iso(),
         "last_updated": now_iso(),
         "current_stage": "B1-诊断",
@@ -108,7 +128,7 @@ def build_bug_state(bf_number: str, problem_name: str, date: str) -> dict:
         "snapshots": []
     }
 
-def create_bugfix(problem_name: str):
+def create_bugfix(problem_name: str, workflow_mode: str = "standard"):
     """创建 Bug Fix 目录骨架"""
     date = today()
     date_dir = BUGFIX_ROOT / date
@@ -129,20 +149,20 @@ def create_bugfix(problem_name: str):
 
     # 生成标准文档与排查附件索引
     files = {
-        "state.json": build_bug_state(bf_number, problem_name, date),
-        "00-总览.md":           load_template("00-总览.md", bf_number, problem_name, date),
-        "01-问题描述.md":       load_template("01-问题描述.md", bf_number, problem_name, date),
-        "02-环境与影响范围.md": load_template("02-环境与影响范围.md", bf_number, problem_name, date),
-        "03-根因分析.md":       load_template("03-根因分析.md", bf_number, problem_name, date),
-        "04-解决方案.md":       load_template("04-解决方案.md", bf_number, problem_name, date),
-        "05-任务拆解.md":       load_template("05-任务拆解.md", bf_number, problem_name, date),
-        "06-执行记录.md":       load_template("06-执行记录.md", bf_number, problem_name, date),
-        "07-测试验证.md":       load_template("07-测试验证.md", bf_number, problem_name, date),
-        "08-验收发布.md":       load_template("08-验收发布.md", bf_number, problem_name, date),
-        "09-复盘与沉淀.md":     load_template("09-复盘与沉淀.md", bf_number, problem_name, date),
-        "10-AI协作记录.md":     load_template("10-AI协作记录.md", bf_number, problem_name, date),
-        "11-排查附件/00-附件索引.md": load_template("11-排查附件-00-附件索引.md", bf_number, problem_name, date),
-        "恢复包.md":             load_template("恢复包.md", bf_number, problem_name, date),
+        "state.json": build_bug_state(bf_number, problem_name, date, workflow_mode),
+        "00-总览.md":           load_template("00-总览.md", bf_number, problem_name, date, workflow_mode),
+        "01-问题描述.md":       load_template("01-问题描述.md", bf_number, problem_name, date, workflow_mode),
+        "02-环境与影响范围.md": load_template("02-环境与影响范围.md", bf_number, problem_name, date, workflow_mode),
+        "03-根因分析.md":       load_template("03-根因分析.md", bf_number, problem_name, date, workflow_mode),
+        "04-解决方案.md":       load_template("04-解决方案.md", bf_number, problem_name, date, workflow_mode),
+        "05-任务拆解.md":       load_template("05-任务拆解.md", bf_number, problem_name, date, workflow_mode),
+        "06-执行记录.md":       load_template("06-执行记录.md", bf_number, problem_name, date, workflow_mode),
+        "07-测试验证.md":       load_template("07-测试验证.md", bf_number, problem_name, date, workflow_mode),
+        "08-验收发布.md":       load_template("08-验收发布.md", bf_number, problem_name, date, workflow_mode),
+        "09-复盘与沉淀.md":     load_template("09-复盘与沉淀.md", bf_number, problem_name, date, workflow_mode),
+        "10-AI协作记录.md":     load_template("10-AI协作记录.md", bf_number, problem_name, date, workflow_mode),
+        "11-排查附件/00-附件索引.md": load_template("11-排查附件-00-附件索引.md", bf_number, problem_name, date, workflow_mode),
+        "恢复包.md":             load_template("恢复包.md", bf_number, problem_name, date, workflow_mode),
         "事实锚点.json":          json.dumps({
             "_comment": "Bug 根因→方案→任务事实链锚点；validators.py bug_chain 读取",
             "bug_id": bf_number,
@@ -166,6 +186,8 @@ def create_bugfix(problem_name: str):
     print(bold("目录结构："))
     for f in sorted(bf_dir.iterdir()):
         print(f"  📄 {f.name}")
+    print()
+    print(f"  流程模式：{workflow_mode}")
     print()
     print(bold("下一步："))
     print(f"  1. 打开 {rel}/00-总览.md 查看总体进度")
@@ -249,7 +271,7 @@ def list_bugfixes(all_dates: bool = False):
         for bf_dir in bfs:
             # 优先读 state.json；若不存在则回退到总览
             state = _load_bug_state(bf_dir)
-            status = state.get("current_stage", "未知") if state else "未知"
+            status = display_bug_stage(state.get("current_stage", "未知")) if state else "未知"
             if not state:
                 overview = bf_dir / "00-总览.md"
                 if overview.exists():
@@ -307,10 +329,11 @@ def recover_bugfix(bug_id: str):
     allowed = state.get("allowed_next_actions", [])
     blocked = state.get("blocked_actions", [])
     current_packet = state.get("context_manifest", {}).get("current_packet") or "未生成"
+    workflow_mode = state.get("workflow_mode", "lightweight") or "lightweight"
 
     print()
     print(bold(cyan("─── 恢复确认卡 ───────────────────────────────────────")))
-    print(f"[恢复确认] {state.get('bug_id', bug_id)} ({state.get('bug_name', bf_dir.name)}) · {state.get('current_stage', '未知')} · step {state.get('step_index', 0)}/{state.get('step_total', 0)}")
+    print(f"[恢复确认] {state.get('bug_id', bug_id)} ({state.get('bug_name', bf_dir.name)}) · {display_bug_stage(state.get('current_stage', '未知'))} · {workflow_mode} · step {state.get('step_index', 0)}/{state.get('step_total', 0)}")
     print(f"当前状态: {state.get('current_step', '未设置')}")
     print(f"基线: state.json=已生成 | 00-总览.md=已建立")
     print(f"当前上下文包: {current_packet}")
@@ -349,8 +372,31 @@ def main():
             sys.exit(1)
         recover_bugfix(sys.argv[2])
     else:
-        problem_name = " ".join(sys.argv[1:])
-        create_bugfix(problem_name)
+        workflow_mode = "standard"
+        args = sys.argv[1:]
+        problem_parts = []
+        i = 0
+        while i < len(args):
+            token = args[i]
+            if token in {"--mode", "-m"}:
+                if i + 1 >= len(args):
+                    print(red("请为 --mode 指定 standard 或 lightweight"))
+                    sys.exit(1)
+                workflow_mode = args[i + 1].strip().lower()
+                if workflow_mode in {"light", "lite"}:
+                    workflow_mode = "lightweight"
+                if workflow_mode not in {"standard", "lightweight"}:
+                    print(red("--mode 只能是 standard 或 lightweight"))
+                    sys.exit(1)
+                i += 2
+                continue
+            problem_parts.append(token)
+            i += 1
+        problem_name = " ".join(problem_parts)
+        if not problem_name:
+            print(red("请提供 Bug 问题名称"))
+            sys.exit(1)
+        create_bugfix(problem_name, workflow_mode)
 
 
 if __name__ == "__main__":

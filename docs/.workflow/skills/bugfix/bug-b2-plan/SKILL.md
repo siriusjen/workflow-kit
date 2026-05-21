@@ -1,3 +1,8 @@
+---
+name: bug-b2-plan
+description: Use when a BF is in B2 planning and needs a fix plan, task split, root-cause coverage, or approval-ready repair strategy.
+---
+
 # bug-b2-plan — Bug 方案阶段
 
 > 所属: `docs/.workflow/skills/bugfix/bug-b2-plan`
@@ -20,6 +25,7 @@
 | 文件 | 说明 |
 |------|------|
 | `04-解决方案.md` | 方案对比、选型理由、完整措施 |
+| `05-任务拆解.md` | BT 任务清单、执行顺序、验收标准 |
 | `事实锚点.json` | 更新 `solution_mappings`（每个根因需有方案覆盖） |
 
 ---
@@ -34,7 +40,7 @@ python3 docs/.workflow/scripts/stage_gates.py progress {bug_id} \
   '{"completed_action":"...","key_conclusions":[...],"outputs":["04-解决方案.md"],"verification":[...],"next_step":"05-任务拆解"}'
 
 python3 docs/.workflow/scripts/stage_gates.py step-done {bug_id} "04-解决方案" \
-  '{"outputs":["04-解决方案.md"],"key_conclusions":[...],"next_step":"05-任务拆解"}'
+  '{"outputs":["04-解决方案.md","事实锚点.json"],"key_conclusions":["bug 结论: 根因已有覆盖方案和回滚方案","规范检查结论: [6/6 项通过]"],"next_step":"05-任务拆解"}'
 ```
 
 ---

@@ -71,6 +71,7 @@ model: sonnet
 
 ```json
 {
+  "dispatch_id": "<subagent-start returned dispatch_id>",
   "stage": "构建验收",
   "status": "done",
   "passed": true,

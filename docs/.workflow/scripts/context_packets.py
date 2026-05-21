@@ -12,6 +12,8 @@ context_packets.py — 阶段上下文包生成器
   python3 docs/.workflow/scripts/context_packets.py list F01
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -308,14 +310,23 @@ BUG_STAGE_DEFS = {
 
 ALIASES = {
     "需求确认": "S2",
+    "S2-需求确认": "S2",
     "技术方案": "S3",
+    "S3-技术方案": "S3",
     "落地计划": "S4",
+    "S4-落地计划": "S4",
     "任务拆分": "S5",
+    "S5-任务拆分": "S5",
     "实现": "S6",
+    "S6-实现": "S6",
     "测试验证": "S7",
+    "S7-测试验证": "S7",
     "构建验收": "S8",
+    "S8-构建验收": "S8",
     "交叉验证": "S9",
+    "S9-交叉验证": "S9",
     "验收发布": "S10",
+    "S10-验收发布": "S10",
 }
 
 BUG_ALIASES = {
@@ -326,6 +337,121 @@ BUG_ALIASES = {
     "验证": "B4",
     "验收": "B4",
 }
+
+BUG_STAGE_DISPLAY = {
+    "B1-诊断": "分析中",
+    "B2-方案": "修复方案",
+    "B3-修复": "修复中",
+    "B4-验证": "验证",
+    "done": "已关闭",
+}
+
+FEATURE_STAGE_CANONICAL = {
+    "init": "init",
+    "S1": "S1-需求输入",
+    "S1-需求输入": "S1-需求输入",
+    "需求输入": "S1-需求输入",
+    "S2": "S2-需求确认",
+    "S2-需求确认": "S2-需求确认",
+    "需求确认": "S2-需求确认",
+    "S3": "S3-技术方案",
+    "S3-技术方案": "S3-技术方案",
+    "技术方案": "S3-技术方案",
+    "S4": "S4-落地计划",
+    "S4-落地计划": "S4-落地计划",
+    "落地计划": "S4-落地计划",
+    "S5": "S5-任务拆分",
+    "S5-任务拆分": "S5-任务拆分",
+    "任务拆分": "S5-任务拆分",
+    "S6": "S6-实现",
+    "S6-实现": "S6-实现",
+    "实现": "S6-实现",
+    "S7": "S7-测试验证",
+    "S7-测试验证": "S7-测试验证",
+    "测试验证": "S7-测试验证",
+    "S8": "S8-构建验收",
+    "S8-构建验收": "S8-构建验收",
+    "构建验收": "S8-构建验收",
+    "S9": "S9-交叉验证",
+    "S9-交叉验证": "S9-交叉验证",
+    "交叉验证": "S9-交叉验证",
+    "S10": "S10-验收发布",
+    "S10-验收发布": "S10-验收发布",
+    "验收发布": "S10-验收发布",
+    "done": "done",
+    "已完成": "done",
+}
+
+FEATURE_STAGE_DISPLAY = {
+    "init": "init",
+    "S1-需求输入": "需求输入",
+    "S2-需求确认": "需求确认",
+    "S3-技术方案": "技术方案",
+    "S4-落地计划": "落地计划",
+    "S5-任务拆分": "任务拆分",
+    "S6-实现": "实现",
+    "S7-测试验证": "测试验证",
+    "S8-构建验收": "构建验收",
+    "S9-交叉验证": "交叉验证",
+    "S10-验收发布": "验收发布",
+    "done": "已完成",
+}
+
+
+def canonical_bug_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return stage
+    mapping = {
+        "分析中": "B1-诊断",
+        "B1-诊断": "B1-诊断",
+        "诊断": "B1-诊断",
+        "修复方案": "B2-方案",
+        "B2-方案": "B2-方案",
+        "方案": "B2-方案",
+        "修复中": "B3-修复",
+        "B3-修复": "B3-修复",
+        "修复": "B3-修复",
+        "验证": "B4-验证",
+        "B4-验证": "B4-验证",
+        "验收发布": "B4-验证",
+        "done": "done",
+        "已关闭": "done",
+    }
+    return mapping.get(stage, stage)
+
+
+def canonical_feature_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return stage
+    return FEATURE_STAGE_CANONICAL.get(stage, stage)
+
+
+def display_feature_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return str(stage)
+    canonical = canonical_feature_stage(stage)
+    return FEATURE_STAGE_DISPLAY.get(canonical, canonical)
+
+
+def feature_workflow_mode(state: dict) -> str:
+    mode = str(state.get("workflow_mode", "") or "").strip().lower()
+    if mode == "standard":
+        return "standard"
+    if mode in {"light", "lite", "lightweight"}:
+        return "lightweight"
+    if mode in {"agentic", "single", "single-entry", "single_entry", "single-agent"}:
+        return "standard"
+    return "lightweight"
+
+
+def feature_execution_mode(state: dict) -> str:
+    mode = str(state.get("execution_mode", "") or "").strip().lower()
+    if mode in {"agentic", "fallback"}:
+        return mode
+    legacy_mode = str(state.get("workflow_mode", "") or "").strip().lower()
+    if legacy_mode in {"agentic", "single", "single-entry", "single_entry", "single-agent"}:
+        return "agentic"
+    return "agentic"
 
 
 def now_iso():
@@ -506,11 +632,17 @@ def key_state_summary(state: dict):
         for item in compact_list(log.get("progress_notes", []), 5)
         if isinstance(item, dict)
     ]
+    current_stage = canonical_feature_stage(state.get("current_stage"))
     return {
         "feature_id": state.get("feature_id"),
         "feature_name": state.get("feature_name"),
-        "current_stage": state.get("current_stage"),
+        "current_stage": current_stage,
+        "current_stage_display": display_feature_stage(current_stage),
         "current_step": state.get("current_step"),
+        "workflow_mode": feature_workflow_mode(state),
+        "execution_mode": feature_execution_mode(state),
+        "input_mode": state.get("input_mode", "unknown"),
+        "current_packet": state.get("context_manifest", {}).get("current_packet"),
         "allowed_next_actions": state.get("allowed_next_actions", []),
         "blocked_actions": state.get("blocked_actions", []),
         "baseline": state.get("baseline", {}),
@@ -524,11 +656,14 @@ def key_state_summary(state: dict):
 
 def key_bug_state_summary(state: dict):
     log = state.get("current_step_log", {})
+    canonical_stage = canonical_bug_stage(state.get("current_stage"))
     return {
         "bug_id": state.get("bug_id"),
         "bug_name": state.get("bug_name"),
         "current_stage": state.get("current_stage"),
+        "current_stage_display": BUG_STAGE_DISPLAY.get(canonical_stage, canonical_stage),
         "current_step": state.get("current_step"),
+        "workflow_mode": state.get("workflow_mode", "lightweight") or "lightweight",
         "current_packet": state.get("context_manifest", {}).get("current_packet"),
         "allowed_next_actions": state.get("allowed_next_actions", []),
         "blocked_actions": state.get("blocked_actions", []),
@@ -555,10 +690,11 @@ def build_packet(fid: str, stage: str, task: str | None = None):
     state_path = fdir / "state.json"
     state = load_json(state_path, {})
     stage_def = STAGE_DEFS[stage_key]
-    current_stage = state.get("current_stage")
-    if current_stage and current_stage != stage_def["name"]:
+    current_stage = canonical_feature_stage(state.get("current_stage"))
+    current_stage_display = display_feature_stage(current_stage)
+    if current_stage_display and current_stage_display != stage_def["name"]:
         print(
-            f"当前阶段为 {current_stage}，不能生成 {stage_key}/{stage_def['name']} 上下文包。",
+            f"当前阶段为 {current_stage_display}，不能生成 {stage_key}/{stage_def['name']} 上下文包。",
             file=sys.stderr
         )
         print("请先完成状态转移，或改为生成当前阶段对应的上下文包。", file=sys.stderr)
@@ -644,8 +780,9 @@ def build_packet(fid: str, stage: str, task: str | None = None):
     packets = state["context_manifest"].setdefault("packets", [])
     packets = [p for p in packets if p.get("path") != str(packet_path.relative_to(fdir))]
     packets.append({
-        "stage": stage_def["name"],
+        "stage": stage_key,
         "stage_key": stage_key,
+        "stage_display": stage_def["name"],
         "task": task,
         "path": str(packet_path.relative_to(fdir)),
         "updated_at": generated_at
@@ -765,7 +902,7 @@ def list_packets(fid: str):
     manifest = state.get("context_manifest", {})
     print(f"当前上下文包: {manifest.get('current_packet') or '无'}")
     for item in manifest.get("packets", []):
-        print(f"- {item.get('stage_key')} {item.get('stage')} {item.get('task') or ''}: {item.get('path')} @ {item.get('updated_at')}")
+        print(f"- {item.get('stage_key')} {item.get('stage_display') or item.get('stage')} {item.get('task') or ''}: {item.get('path')} @ {item.get('updated_at')}")
 
 
 def main():

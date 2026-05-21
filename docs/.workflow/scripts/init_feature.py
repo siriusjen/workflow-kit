@@ -64,6 +64,48 @@ def cyan(t):     return color(t, "36")
 def bold(t):     return color(t, "1")
 def red(t):      return color(t, "31")
 
+FEATURE_STAGE_DISPLAY = {
+    "init": "init",
+    "S1-需求输入": "需求输入",
+    "S2-需求确认": "需求确认",
+    "S3-技术方案": "技术方案",
+    "S4-落地计划": "落地计划",
+    "S5-任务拆分": "任务拆分",
+    "S6-实现": "实现",
+    "S7-测试验证": "测试验证",
+    "S8-构建验收": "构建验收",
+    "S9-交叉验证": "交叉验证",
+    "S10-验收发布": "验收发布",
+    "done": "已完成",
+}
+
+
+def display_feature_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return str(stage)
+    return FEATURE_STAGE_DISPLAY.get(stage, stage)
+
+
+def feature_workflow_mode(state: dict) -> str:
+    mode = str(state.get("workflow_mode", "") or "").strip().lower()
+    if mode == "standard":
+        return "standard"
+    if mode in {"light", "lite", "lightweight"}:
+        return "lightweight"
+    if mode in {"agentic", "single", "single-entry", "single_entry", "single-agent"}:
+        return "standard"
+    return "lightweight"
+
+
+def feature_execution_mode(state: dict) -> str:
+    mode = str(state.get("execution_mode", "") or "").strip().lower()
+    if mode in {"agentic", "fallback"}:
+        return mode
+    legacy_mode = str(state.get("workflow_mode", "") or "").strip().lower()
+    if legacy_mode in {"agentic", "single", "single-entry", "single_entry", "single-agent"}:
+        return "agentic"
+    return "agentic"
+
 def next_feature_id() -> str:
     if not FEATURES_ROOT.exists():
         return "F01"
@@ -123,6 +165,8 @@ def build_state(feature_id: str, feature_name: str, input_mode: str) -> dict:
         "feature_name": feature_name,
         "change_id": f"chg-{datetime.now().strftime('%Y%m%d')}-001",
         "input_mode": input_mode,
+        "workflow_mode": "standard",
+        "execution_mode": "agentic",
         "created_at": ts,
         "last_updated": ts,
 
@@ -201,6 +245,8 @@ def tpl_nav(feature_id: str, feature_name: str, input_mode: str) -> str:
 > 由 init_feature.py 自动生成 · 后续由工作流自动维护
 
 **输入模式**: {mode_desc}
+**工作流模式**: standard（流程深度）
+**执行模式**: agentic（执行方式）
 **当前阶段**: init — 等待需求输入讨论
 **当前状态**: 骨架已创建
 
@@ -240,7 +286,7 @@ def tpl_nav(feature_id: str, feature_name: str, input_mode: str) -> str:
 | {today()} | 骨架初始化（模式: {input_mode}） |
 """
 
-def tpl_recovery(feature_id: str, feature_name: str) -> str:
+def tpl_recovery(feature_id: str, feature_name: str, input_mode: str) -> str:
     return f"""# {feature_id}-{feature_name} 恢复包
 
 > 会话中断后，主Agent启动的第一步读这个文件
@@ -252,6 +298,9 @@ def tpl_recovery(feature_id: str, feature_name: str) -> str:
 ```
 [恢复确认] {feature_id} · init · step 0/1
 当前状态: awaiting-req-input-discussion
+工作流模式: standard（流程深度）
+执行模式: agentic（执行方式）
+输入模式: {input_mode}
 基线: requirement=未设置 | tech_spec=未设置 | task_split=未设置
 当前上下文包: 未生成
 已完成步骤: 骨架初始化 ✓
@@ -382,7 +431,7 @@ def create_skeleton(feature_id: str, feature_name: str, input_mode: str) -> Path
             tpl_nav(feature_id, feature_name, input_mode),
 
         feature_dir / "恢复包.md":
-            tpl_recovery(feature_id, feature_name),
+            tpl_recovery(feature_id, feature_name, input_mode),
 
         feature_dir / "00-需求输入" / "说明.md":
             tpl_req_input_readme(feature_id),
@@ -504,11 +553,18 @@ def recover(feature_id: str):
     risk = exc[-1].get("detail", "无") if exc else "无"
     ctx = log.get("context_usage_pct", 0)
     current_packet = s.get("context_manifest", {}).get("current_packet") or "未生成"
+    stage_display = display_feature_stage(s.get("current_stage", "未知"))
+    workflow_mode = feature_workflow_mode(s)
+    execution_mode = feature_execution_mode(s)
+    input_mode = s.get("input_mode", "?")
 
     print()
     print(bold(cyan("─── 恢复确认卡 ───────────────────────────────────────")))
-    print(f"[恢复确认] {s['feature_id']} ({s['feature_name']}) · {s['current_stage']} · step {s.get('step_index',0)}/{s.get('step_total',1)}")
+    print(f"[恢复确认] {s['feature_id']} ({s['feature_name']}) · {stage_display} · {workflow_mode} / {execution_mode} / {input_mode} · step {s.get('step_index',0)}/{s.get('step_total',1)}")
     print(f"当前状态: {s.get('current_step', '未设置')}")
+    print(f"工作流模式: {workflow_mode}（流程深度）")
+    print(f"执行模式: {execution_mode}（执行方式）")
+    print(f"输入模式: {input_mode}")
     print(f"基线: {baseline_summary}")
     print(f"当前上下文包: {current_packet}")
     print(f"已完成步骤: {', '.join(c.get('step', '?') if isinstance(c, dict) else str(c) for c in completed) or '无'}")

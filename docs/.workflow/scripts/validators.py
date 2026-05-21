@@ -7,6 +7,7 @@ validators.py — 自动完整性校验器 v2.0
   req_cross_validate 需求交叉验证（S2结束）
   fact_inheritance 技术方案事实继承一致性（S3结束）
   rdt_mapping      映射闭环（S5结束）
+  rd_mapping       rdt_mapping 的兼容别名
   impl_drift       实现偏离（每次实现记录后）
   rdtv_closure     RDTV闭环（S9全链路验证后）
 
@@ -51,6 +52,35 @@ CODE_EVIDENCE_FACT_TYPES = {
 }
 
 
+BUG_STANDARD_REQUIRED_DOCS = [
+    "00-总览.md",
+    "01-问题描述.md",
+    "02-环境与影响范围.md",
+    "03-根因分析.md",
+    "04-解决方案.md",
+    "05-任务拆解.md",
+    "06-执行记录.md",
+    "07-测试验证.md",
+    "08-验收发布.md",
+    "09-复盘与沉淀.md",
+    "10-AI协作记录.md",
+    "state.json",
+]
+
+BUG_LIGHTWEIGHT_REQUIRED_DOCS = [
+    "00-总览.md",
+    "01-问题描述.md",
+    "02-环境与影响范围.md",
+    "03-根因分析.md",
+    "04-解决方案.md",
+    "05-任务拆解.md",
+    "06-执行记录.md",
+    "07-测试验证.md",
+    "08-验收发布.md",
+    "state.json",
+]
+
+
 def resolve_features_root() -> Path:
     if PRIMARY_FEATURES_ROOT.exists():
         return PRIMARY_FEATURES_ROOT
@@ -61,6 +91,38 @@ def resolve_features_root() -> Path:
 
 FEATURES_ROOT = resolve_features_root()
 
+FEATURE_STAGE_CANONICAL = {
+    "init": "init",
+    "需求确认": "S2-需求确认",
+    "S2": "S2-需求确认",
+    "S2-需求确认": "S2-需求确认",
+    "技术方案": "S3-技术方案",
+    "S3": "S3-技术方案",
+    "S3-技术方案": "S3-技术方案",
+    "落地计划": "S4-落地计划",
+    "S4": "S4-落地计划",
+    "S4-落地计划": "S4-落地计划",
+    "任务拆分": "S5-任务拆分",
+    "S5": "S5-任务拆分",
+    "S5-任务拆分": "S5-任务拆分",
+    "实现": "S6-实现",
+    "S6": "S6-实现",
+    "S6-实现": "S6-实现",
+    "测试验证": "S7-测试验证",
+    "S7": "S7-测试验证",
+    "S7-测试验证": "S7-测试验证",
+    "构建验收": "S8-构建验收",
+    "S8": "S8-构建验收",
+    "S8-构建验收": "S8-构建验收",
+    "交叉验证": "S9-交叉验证",
+    "S9": "S9-交叉验证",
+    "S9-交叉验证": "S9-交叉验证",
+    "验收发布": "S10-验收发布",
+    "S10": "S10-验收发布",
+    "S10-验收发布": "S10-验收发布",
+    "done": "done",
+}
+
 
 def now_iso(): return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 def color(t, c): return f"\033[{c}m{t}\033[0m" if sys.stdout.isatty() else t
@@ -69,6 +131,12 @@ def yellow(t): return color(t, "33")
 def red(t): return color(t, "31")
 def cyan(t): return color(t, "36")
 def bold(t): return color(t, "1")
+
+
+def canonical_feature_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return str(stage)
+    return FEATURE_STAGE_CANONICAL.get(stage, stage)
 
 def find_feature_dir(fid: str) -> Path:
     matches = [d for d in FEATURES_ROOT.iterdir()
@@ -450,7 +518,7 @@ def v_impl_drift(fdir: Path, t_number: str) -> bool:
             details.append({"ok": False, "msg": f"范围内但未提及: {s}"})
 
     mentioned = re.findall(
-        r'[A-Za-z][A-Za-z0-9_/]+\.(?:py|ts|tsx|js|jsx|java|go|kt|swift|rs)',
+        r'[A-Za-z][A-Za-z0-9_/]+\.(?:tsx|jsx|java|swift|py|ts|js|go|kt|rs)(?![A-Za-z0-9_])',
         content
     )
     all_scopes = []
@@ -490,8 +558,9 @@ def v_rdtv_closure(fdir: Path) -> bool:
     print(bold("\n── 校验器 5: RDTV 闭环 ──"))
 
     state = load_json(fdir / "state.json")
-    allowed_stages = {"交叉验证", "验收发布", "done"}
-    if state.get("current_stage") not in allowed_stages:
+    current_stage = canonical_feature_stage(state.get("current_stage"))
+    allowed_stages = {"S9-交叉验证", "S10-验收发布", "done"}
+    if current_stage not in allowed_stages:
         print(red(
             f"  当前阶段不允许执行 RDTV 闭环: {state.get('current_stage')} "
             f"(允许: {', '.join(sorted(allowed_stages))})"
@@ -576,7 +645,7 @@ def v_rdtv_closure(fdir: Path) -> bool:
     if passed:
         print(cyan(f"  追溯表: 05-测试验证/RDTV报告.json"))
         print(cyan(f"  {report['total']} 条链路全部闭合"))
-        if state.get("current_stage") == "交叉验证":
+        if current_stage == "S9-交叉验证":
             _trigger_auto(fdir.name.split("-")[0], "rdtv-mapping-complete")
 
     return passed
@@ -600,25 +669,24 @@ def _check_array_of_objects(data: dict, array_name: str, required_fields: list) 
     return errors
 
 
+def _bug_workflow_mode(state: dict) -> str:
+    mode = str(state.get("workflow_mode", "")).strip().lower()
+    if mode == "standard":
+        return "standard"
+    if mode in {"light", "lite", "lightweight"}:
+        return "lightweight"
+    return "lightweight"
+
+
 def v_bug_chain(bdir: Path) -> bool:
     print(bold("\n── Bug 校验器: 根因→方案→任务闭环 ──"))
 
-    required_docs = [
-        "00-总览.md",
-        "01-问题描述.md",
-        "02-环境与影响范围.md",
-        "03-根因分析.md",
-        "04-解决方案.md",
-        "05-任务拆解.md",
-        "06-执行记录.md",
-        "07-测试验证.md",
-        "08-验收发布.md",
-        "09-复盘与沉淀.md",
-        "10-AI协作记录.md",
-        "state.json",
-    ]
+    state = load_json(bdir / "state.json")
+    bug_mode = _bug_workflow_mode(state)
+    required_docs = BUG_LIGHTWEIGHT_REQUIRED_DOCS if bug_mode == "lightweight" else BUG_STANDARD_REQUIRED_DOCS
     details = []
     passed = True
+    details.append({"ok": True, "msg": f"流程模式: {bug_mode}"})
     for rel in required_docs:
         path = bdir / rel
         ok = path.exists() and path.stat().st_size > 0
@@ -711,7 +779,6 @@ def v_bug_chain(bdir: Path) -> bool:
         else:
             details.append({"ok": True, "msg": "所有方案均被任务覆盖"})
 
-    state = load_json(bdir / "state.json")
     current_packet = state.get("context_manifest", {}).get("current_packet")
     if not state.get("checklist", {}).get("context_packet_done"):
         passed = False
@@ -724,6 +791,18 @@ def v_bug_chain(bdir: Path) -> bool:
         details.append({"ok": False, "msg": f"上下文包不存在: {current_packet}"})
     else:
         details.append({"ok": True, "msg": f"上下文包已就绪: {current_packet}"})
+
+    if bug_mode == "standard":
+        if not state.get("checklist", {}).get("retrospective_done"):
+            passed = False
+            details.append({"ok": False, "msg": "state.json: retrospective_done 未完成（标准模式必需）"})
+        else:
+            details.append({"ok": True, "msg": "复盘步骤已完成"})
+        if not state.get("checklist", {}).get("ai_record_done"):
+            passed = False
+            details.append({"ok": False, "msg": "state.json: ai_record_done 未完成（标准模式必需）"})
+        else:
+            details.append({"ok": True, "msg": "AI 协作记录已完成"})
 
     print_result("bug_chain", passed, details, "Bug 根因、方案或任务链路未闭合" if not passed else None)
 
@@ -762,7 +841,7 @@ def main():
         sys.exit(0 if v_req_cross_validate(fdir) else 1)
     elif v == "fact_inheritance":
         sys.exit(0 if v_fact_inheritance(fdir) else 1)
-    elif v == "rdt_mapping":
+    elif v in {"rdt_mapping", "rd_mapping"}:
         sys.exit(0 if v_rdt_mapping(fdir) else 1)
     elif v == "impl_drift":
         if len(sys.argv) < 4:

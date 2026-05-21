@@ -56,19 +56,19 @@ KNOWN_SUBAGENTS = {
     "Bug独立复核",
 }
 SUBAGENTS_BY_STAGE = {
-    "需求确认": {"需求交叉验证"},
-    "技术方案": {"技术方案设计"},
-    "落地计划": {"落地计划"},
-    "任务拆分": {"任务拆分"},
-    "实现": {"任务实现", "规格符合性复核", "代码质量复核"},
-    "测试验证": {"测试验证"},
-    "构建验收": {"HTTP接口验收"},
-    "交叉验证": {"全链路验证"},
-    "分析中": {"Bug根因分析", "Bug独立复核"},
-    "修复方案": {"Bug根因分析", "Bug独立复核"},
-    "修复中": {"Bug修复实现", "Bug独立复核"},
-    "验证": {"Bug回归验证", "Bug独立复核"},
-    "验收发布": {"Bug回归验证", "Bug独立复核"},
+    "S2-需求确认": {"需求交叉验证"},
+    "S3-技术方案": {"技术方案设计"},
+    "S4-落地计划": {"落地计划"},
+    "S5-任务拆分": {"任务拆分"},
+    "S6-实现": {"任务实现", "规格符合性复核", "代码质量复核"},
+    "S7-测试验证": {"测试验证"},
+    "S8-构建验收": {"HTTP接口验收"},
+    "S9-交叉验证": {"全链路验证"},
+    "B1-诊断": {"Bug根因分析", "Bug独立复核"},
+    "B2-方案": {"Bug根因分析", "Bug独立复核"},
+    "B3-修复": {"Bug修复实现", "Bug独立复核"},
+    "B4-验证": {"Bug回归验证", "Bug独立复核"},
+    "done": set(),
 }
 
 
@@ -81,6 +81,57 @@ def resolve_features_root() -> Path:
 
 
 FEATURES_ROOT = resolve_features_root()
+
+FEATURE_STAGE_CANONICAL = {
+    "init": "init",
+    "S1": "S1-需求输入",
+    "S1-需求输入": "S1-需求输入",
+    "需求输入": "S1-需求输入",
+    "S2": "S2-需求确认",
+    "S2-需求确认": "S2-需求确认",
+    "需求确认": "S2-需求确认",
+    "S3": "S3-技术方案",
+    "S3-技术方案": "S3-技术方案",
+    "技术方案": "S3-技术方案",
+    "S4": "S4-落地计划",
+    "S4-落地计划": "S4-落地计划",
+    "落地计划": "S4-落地计划",
+    "S5": "S5-任务拆分",
+    "S5-任务拆分": "S5-任务拆分",
+    "任务拆分": "S5-任务拆分",
+    "S6": "S6-实现",
+    "S6-实现": "S6-实现",
+    "实现": "S6-实现",
+    "S7": "S7-测试验证",
+    "S7-测试验证": "S7-测试验证",
+    "测试验证": "S7-测试验证",
+    "S8": "S8-构建验收",
+    "S8-构建验收": "S8-构建验收",
+    "构建验收": "S8-构建验收",
+    "S9": "S9-交叉验证",
+    "S9-交叉验证": "S9-交叉验证",
+    "交叉验证": "S9-交叉验证",
+    "S10": "S10-验收发布",
+    "S10-验收发布": "S10-验收发布",
+    "验收发布": "S10-验收发布",
+    "done": "done",
+    "已完成": "done",
+}
+
+FEATURE_STAGE_DISPLAY = {
+    "init": "init",
+    "S1-需求输入": "需求输入",
+    "S2-需求确认": "需求确认",
+    "S3-技术方案": "技术方案",
+    "S4-落地计划": "落地计划",
+    "S5-任务拆分": "任务拆分",
+    "S6-实现": "实现",
+    "S7-测试验证": "测试验证",
+    "S8-构建验收": "构建验收",
+    "S9-交叉验证": "交叉验证",
+    "S10-验收发布": "验收发布",
+    "done": "已完成",
+}
 
 
 # ── 状态转移定义 ──────────────────────────────────────────────────────────────
@@ -206,7 +257,7 @@ AUTO_TRANSITIONS = {
         "checklist_set": "fact_inheritance_check",
         "sets_step": "run-rd-mapping-check",
         "step_index": 3,
-        "allowed_next": ["validators.py rd_mapping", "auto rd-mapping-complete"],
+        "allowed_next": ["validators.py rdt_mapping", "auto rd-mapping-complete"],
         "blocked": ["write-code", "split-tasks"]
     },
     "rd-mapping-complete": {
@@ -246,6 +297,14 @@ AUTO_TRANSITIONS = {
         "allowed_next": ["dispatch-任务实现-subagent (按T编号循环)"],
         "blocked": []
     },
+    "docs-only-worktree-not-required": {
+        "from_stages": ["实现"],
+        "checklist_set": "worktree_created",
+        "sets_step": "dispatch-impl-subagent-per-task",
+        "step_index": 2,
+        "allowed_next": ["dispatch-任务实现-subagent (按T编号循环)", "run-implementation-mainline"],
+        "blocked": []
+    },
     "all-tasks-done": {
         "from_stages": ["实现"],
         "checklist_set": "all_tasks_done",
@@ -273,7 +332,26 @@ AUTO_TRANSITIONS = {
         "allowed_next": ["提示人工本地启动部署", "dispatch-HTTP接口验收-subagent"],
         "blocked": ["write-code"]
     },
+    "docs-only-artifact-not-required": {
+        "from_stages": ["构建验收"],
+        "checklist_set": "artifact_package_done",
+        "sets_step": "docs-only-http-acceptance",
+        "step_index": 2,
+        "step_total": 3,
+        "allowed_next": ["auto docs-only-http-acceptance-not-required"],
+        "blocked": ["write-code"]
+    },
     "http-acceptance-done": {
+        "from_stages": ["构建验收"],
+        "checklist_set": "http_acceptance_done",
+        "sets_step": "dispatch-full-chain-validate",
+        "to_stage": "交叉验证",
+        "step_index": 1,
+        "step_total": 2,
+        "allowed_next": ["dispatch-全链路验证-subagent", "run-full-chain-validation-mainline"],
+        "blocked": ["write-code"]
+    },
+    "docs-only-http-acceptance-not-required": {
         "from_stages": ["构建验收"],
         "checklist_set": "http_acceptance_done",
         "sets_step": "dispatch-full-chain-validate",
@@ -305,8 +383,8 @@ AUTO_TRANSITIONS = {
 
 BUG_APPROVAL_TRANSITIONS = {
     "approve-rootcause": {
-        "from_stages": ["分析中", "B1-诊断"],
-        "to_stage": "修复方案",
+        "from_stages": ["B1-诊断"],
+        "to_stage": "B2-方案",
         "to_step": "04-解决方案",
         "step_index": 4,
         "step_total": 9,
@@ -322,8 +400,8 @@ BUG_APPROVAL_TRANSITIONS = {
         "description": "根因已确认，进入修复方案阶段"
     },
     "approve-fix-plan": {
-        "from_stages": ["修复方案", "B2-方案"],
-        "to_stage": "修复中",
+        "from_stages": ["B2-方案"],
+        "to_stage": "B3-修复",
         "to_step": "06-执行记录",
         "step_index": 6,
         "step_total": 9,
@@ -342,7 +420,7 @@ BUG_APPROVAL_TRANSITIONS = {
         "description": "修复方案和任务拆解已确认，进入执行修复"
     },
     "approve-release": {
-        "from_stages": ["验收发布", "B4-验证"],
+        "from_stages": ["B4-验证"],
         "to_stage": "done",
         "to_step": "completed",
         "step_index": 9,
@@ -358,7 +436,7 @@ BUG_APPROVAL_TRANSITIONS = {
         "description": "Bug 验证与发布验收通过，流程关闭"
     },
     "approve-correction": {
-        "from_stages": ["分析中", "B1-诊断", "修复方案", "B2-方案", "修复中", "B3-修复", "验证", "B4-验证", "验收发布"],
+        "from_stages": ["B1-诊断", "B2-方案", "B3-修复", "B4-验证"],
         "to_stage": None,
         "to_step": "human-corrected-resume",
         "step_index": None,
@@ -373,7 +451,7 @@ BUG_APPROVAL_TRANSITIONS = {
 
 BUG_AUTO_TRANSITIONS = {
     "bug-problem-described": {
-        "from_stages": ["分析中", "B1-诊断"],
+        "from_stages": ["B1-诊断"],
         "checklist_set": "problem_description_done",
         "sets_step": "02-环境与影响范围",
         "step_index": 2,
@@ -381,7 +459,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-scope-done": {
-        "from_stages": ["分析中", "B1-诊断"],
+        "from_stages": ["B1-诊断"],
         "checklist_set": "scope_done",
         "sets_step": "03-根因分析",
         "step_index": 3,
@@ -393,7 +471,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-rootcause-done": {
-        "from_stages": ["分析中", "B1-诊断"],
+        "from_stages": ["B1-诊断"],
         "checklist_set": "rootcause_done",
         "sets_step": "awaiting-approve-rootcause",
         "step_index": 3,
@@ -402,7 +480,7 @@ BUG_AUTO_TRANSITIONS = {
         "sets": {"human_approval_required": True, "human_approval_pending": True}
     },
     "bug-solution-done": {
-        "from_stages": ["修复方案", "B2-方案"],
+        "from_stages": ["B2-方案"],
         "checklist_set": "solution_done",
         "sets_step": "05-任务拆解",
         "step_index": 5,
@@ -410,7 +488,7 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-task-split-done": {
-        "from_stages": ["修复方案", "B2-方案"],
+        "from_stages": ["B2-方案"],
         "checklist_set": "task_split_done",
         "sets_step": "awaiting-approve-fix-plan",
         "step_index": 5,
@@ -419,10 +497,10 @@ BUG_AUTO_TRANSITIONS = {
         "sets": {"human_approval_required": True, "human_approval_pending": True}
     },
     "bug-execution-done": {
-        "from_stages": ["修复中", "B3-修复"],
+        "from_stages": ["B3-修复"],
         "checklist_set": "execution_done",
         "sets_step": "07-测试验证",
-        "to_stage": "验证",
+        "to_stage": "B4-验证",
         "step_index": 7,
         "allowed_next": [
             "context_packets.py build BFxx B4",
@@ -432,16 +510,16 @@ BUG_AUTO_TRANSITIONS = {
         "blocked": ["发布", "关闭 bug"]
     },
     "bug-test-done": {
-        "from_stages": ["验证", "B4-验证"],
+        "from_stages": ["B4-验证"],
         "checklist_set": "test_done",
         "sets_step": "08-验收发布",
-        "to_stage": "验收发布",
+        "to_stage": "B4-验证",
         "step_index": 8,
         "allowed_next": ["step-start 08-验收发布"],
         "blocked": ["关闭 bug"]
     },
     "bug-release-done": {
-        "from_stages": ["验收发布", "B4-验证"],
+        "from_stages": ["B4-验证"],
         "checklist_set": "release_done",
         "sets_step": "awaiting-approve-release",
         "step_index": 9,
@@ -787,13 +865,13 @@ def validate_context_packet_for_subagent(fdir: Path, state: dict, data: dict):
         print(yellow("请重新运行 context_packets.py build 生成当前阶段上下文包。"))
         sys.exit(1)
     packet_stage = packet_meta.get("stage")
-    state_stage = state.get("current_stage")
+    state_stage = canonical_stage_for_state(state, state.get("current_stage"))
     compatible_bug_stages = {
-        "分析中": {"诊断"},
-        "修复方案": {"方案"},
-        "修复中": {"修复"},
-        "验证": {"验证"},
-        "验收发布": {"验证"},
+        "B1-诊断": {"诊断"},
+        "B2-方案": {"方案"},
+        "B3-修复": {"修复"},
+        "B4-验证": {"验证"},
+        "done": {"验证"},
     }
     stage_matches = packet_stage == state_stage
     if workflow_kind(state) == "bugfix":
@@ -811,7 +889,7 @@ def validate_subagent_dispatch(state: dict, subagent_name: str, data: dict):
         errors.append("派遣子Agent前必须先执行 step-start，当前没有未闭合步骤")
     if subagent_name not in KNOWN_SUBAGENTS:
         errors.append(f"未知子Agent: {subagent_name}")
-    stage = state.get("current_stage")
+    stage = canonical_stage_for_state(state, state.get("current_stage"))
     allowed = SUBAGENTS_BY_STAGE.get(stage, set())
     if allowed and subagent_name not in allowed:
         errors.append(f"当前阶段 {stage} 只能派遣: {', '.join(sorted(allowed))}")
@@ -848,6 +926,8 @@ def validate_subagent_paths(fdir: Path, label: str, paths: list, must_exist: boo
 
 def validate_subagent_result(data: dict):
     errors = []
+    if not _non_empty_string(data.get("dispatch_id")):
+        errors.append("dispatch_id 必须是非空字符串")
     if not _non_empty_string(data.get("summary")):
         errors.append("summary 必须是非空字符串")
     if not _non_empty_string_list(data.get("output_paths")):
@@ -915,6 +995,18 @@ def validate_auto_prereqs(fdir: Path, state: dict, key: str):
         if not re.search(r"passed\s*[:：]\s*(true|是|通过)|构建.*(成功|通过)", latest, flags=re.I):
             print(red(f"❌ 构建记录未明确构建通过: {build_records[-1].relative_to(fdir)}"))
             sys.exit(1)
+    elif key == "docs-only-artifact-not-required":
+        build_records = sorted((fdir / "05-测试验证").glob("构建记录-*.md"))
+        if not build_records:
+            print(red("❌ docs-only 构建验收必须有构建记录: 05-测试验证/构建记录-YYYYMMDD.md"))
+            sys.exit(1)
+        latest = build_records[-1].read_text(encoding="utf-8")
+        if not re.search(r"not_applicable\s*[:：]\s*true|不适用|docs-only", latest, flags=re.I):
+            print(red(f"❌ docs-only 构建记录必须说明构建产物不适用: {build_records[-1].relative_to(fdir)}"))
+            sys.exit(1)
+        if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
+            print(red(f"❌ docs-only 构建记录未明确 passed: true/通过: {build_records[-1].relative_to(fdir)}"))
+            sys.exit(1)
     elif key == "http-acceptance-done":
         if not state.get("checklist", {}).get("artifact_package_done"):
             print(red("❌ HTTP验收前必须先完成 artifact_package_done。"))
@@ -930,6 +1022,25 @@ def validate_auto_prereqs(fdir: Path, state: dict, key: str):
         latest = records[-1].read_text(encoding="utf-8")
         if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
             print(red(f"❌ HTTP 验收记录未明确 passed: true/通过: {records[-1].relative_to(fdir)}"))
+            sys.exit(1)
+    elif key == "docs-only-http-acceptance-not-required":
+        if not state.get("checklist", {}).get("artifact_package_done"):
+            print(red("❌ docs-only HTTP 验收前必须先完成 artifact_package_done。"))
+            sys.exit(1)
+        checklist_files = sorted((fdir / "05-测试验证").glob("HTTP验收清单-*.md"))
+        if not checklist_files:
+            print(red("❌ docs-only HTTP 验收必须有验收清单: 05-测试验证/HTTP验收清单-YYYYMMDD.md"))
+            sys.exit(1)
+        records = sorted((fdir / "05-测试验证").glob("HTTP验收记录-*.md"))
+        if not records:
+            print(red("❌ docs-only HTTP 验收必须有验收记录: 05-测试验证/HTTP验收记录-YYYYMMDD.md"))
+            sys.exit(1)
+        latest = records[-1].read_text(encoding="utf-8")
+        if not re.search(r"not_applicable\s*[:：]\s*true|不适用|docs-only", latest, flags=re.I):
+            print(red(f"❌ docs-only HTTP 验收记录必须说明 HTTP 不适用: {records[-1].relative_to(fdir)}"))
+            sys.exit(1)
+        if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
+            print(red(f"❌ docs-only HTTP 验收记录未明确 passed: true/通过: {records[-1].relative_to(fdir)}"))
             sys.exit(1)
     elif key == "rdtv-mapping-complete":
         if not state.get("checklist", {}).get("cross_validate_done"):
@@ -950,6 +1061,15 @@ def validate_auto_prereqs(fdir: Path, state: dict, key: str):
         if not candidates:
             print(red("❌ 未检测到独立代码 worktree，禁止标记 worktree-created。"))
             print(yellow("请先按 using-git-worktrees 创建代码 worktree；文档仍写入当前主项目 docs/。"))
+            sys.exit(1)
+    elif key == "docs-only-worktree-not-required":
+        records = sorted((fdir / "04-实现记录").glob("实现记录-*.md"))
+        if not records:
+            print(red("❌ docs-only 放行必须先有实现记录: 04-实现记录/实现记录-YYYYMMDD*.md"))
+            sys.exit(1)
+        latest = "\n".join(path.read_text(encoding="utf-8") for path in records[-3:])
+        if not re.search(r"docs-only|文档|skill|agent|规范", latest, flags=re.I):
+            print(red("❌ docs-only 放行必须在实现记录中说明变更仅涉及文档/规范/Skill/Agent。"))
             sys.exit(1)
 
 def find_feature_dir(feature_id: str) -> Path:
@@ -1015,6 +1135,146 @@ def workflow_id(state: dict) -> str:
 def workflow_name(state: dict) -> str:
     return state.get("feature_name") or state.get("bug_name") or "UNKNOWN"
 
+
+BUG_STAGE_CANONICAL = {
+    "分析中": "B1-诊断",
+    "B1-诊断": "B1-诊断",
+    "诊断": "B1-诊断",
+    "修复方案": "B2-方案",
+    "B2-方案": "B2-方案",
+    "方案": "B2-方案",
+    "修复中": "B3-修复",
+    "B3-修复": "B3-修复",
+    "修复": "B3-修复",
+    "验证": "B4-验证",
+    "B4-验证": "B4-验证",
+    "验收发布": "B4-验证",
+    "done": "done",
+    "已关闭": "done",
+}
+
+BUG_STAGE_DISPLAY = {
+    "B1-诊断": "分析中",
+    "B2-方案": "修复方案",
+    "B3-修复": "修复中",
+    "B4-验证": "验证",
+    "done": "已关闭",
+}
+
+
+def canonical_bug_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return stage
+    return BUG_STAGE_CANONICAL.get(stage, stage)
+
+
+def display_bug_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return str(stage)
+    canonical = canonical_bug_stage(stage)
+    return BUG_STAGE_DISPLAY.get(canonical, canonical)
+
+
+def canonical_feature_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return stage
+    return FEATURE_STAGE_CANONICAL.get(stage, stage)
+
+
+def display_feature_stage(stage: str) -> str:
+    if not isinstance(stage, str):
+        return str(stage)
+    canonical = canonical_feature_stage(stage)
+    return FEATURE_STAGE_DISPLAY.get(canonical, canonical)
+
+
+def feature_workflow_mode(state: dict) -> str:
+    mode = str(state.get("workflow_mode", "") or "").strip().lower()
+    if mode == "standard":
+        return "standard"
+    if mode in {"light", "lite", "lightweight"}:
+        return "lightweight"
+    if mode in {"agentic", "single", "single-entry", "single_entry", "single-agent"}:
+        return "standard"
+    return "lightweight"
+
+
+def feature_execution_mode(state: dict) -> str:
+    mode = str(state.get("execution_mode", "") or "").strip().lower()
+    if mode in {"agentic", "fallback"}:
+        return mode
+    legacy_mode = str(state.get("workflow_mode", "") or "").strip().lower()
+    if legacy_mode in {"agentic", "single", "single-entry", "single_entry", "single-agent"}:
+        return "agentic"
+    return "agentic"
+
+
+def canonical_stage_for_state(state: dict, stage: str) -> str:
+    if workflow_kind(state) == "bugfix":
+        return canonical_bug_stage(stage)
+    return canonical_feature_stage(stage)
+
+
+def display_stage_for_state(state: dict, stage: str) -> str:
+    if workflow_kind(state) == "bugfix":
+        return display_bug_stage(stage)
+    return display_feature_stage(stage)
+
+
+def canonical_stage_list_for_state(state: dict, stages) -> list[str]:
+    return [canonical_stage_for_state(state, stage) for stage in stages or []]
+
+
+def normalize_feature_state_inplace(state: dict) -> bool:
+    if workflow_kind(state) != "feature":
+        return False
+    changed = False
+    stage = state.get("current_stage")
+    canonical = canonical_feature_stage(stage)
+    if canonical != stage:
+        state["current_stage"] = canonical
+        changed = True
+    mode = feature_workflow_mode(state)
+    if state.get("workflow_mode") != mode:
+        state["workflow_mode"] = mode
+        changed = True
+    execution_mode = feature_execution_mode(state)
+    if state.get("execution_mode") != execution_mode:
+        state["execution_mode"] = execution_mode
+        changed = True
+    return changed
+
+
+def normalize_bug_state_inplace(state: dict) -> bool:
+    if workflow_kind(state) != "bugfix":
+        return False
+    changed = False
+    stage = state.get("current_stage")
+    canonical = canonical_bug_stage(stage)
+    if canonical != stage:
+        state["current_stage"] = canonical
+        changed = True
+    mode = state.get("workflow_mode")
+    if not mode:
+        state["workflow_mode"] = "lightweight"
+        changed = True
+    if mode in {"light", "lite"}:
+        state["workflow_mode"] = "lightweight"
+        changed = True
+    elif mode and mode not in {"standard", "lightweight"}:
+        state["workflow_mode"] = "lightweight"
+        changed = True
+    return changed
+
+
+def bug_workflow_mode(state: dict) -> str:
+    mode = str(state.get("workflow_mode", "")).strip().lower()
+    if mode == "standard":
+        return "standard"
+    if mode in {"light", "lite", "lightweight"}:
+        return "lightweight"
+    return "lightweight"
+
 def atomic_write_text(path: Path, content: str):
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(content, encoding="utf-8")
@@ -1045,7 +1305,10 @@ def load_state(fdir: Path) -> dict:
         print(red(f"state.json 不存在：{f}"))
         sys.exit(1)
     try:
-        return load_json_with_snapshot_fallback(f)
+        state = load_json_with_snapshot_fallback(f)
+        normalize_bug_state_inplace(state)
+        normalize_feature_state_inplace(state)
+        return state
     except json.JSONDecodeError as err:
         print(red(f"state.json 已损坏且无有效快照可恢复：{err}"))
         sys.exit(1)
@@ -1069,7 +1332,7 @@ def sync_readme_bugfix_status(fdir: Path, state: dict):
     date = state.get("date") or fdir.parent.name
     bug_id = state.get("bug_id") or fdir.name.split("-", 1)[0]
     bug_name = state.get("bug_name") or (fdir.name.split("-", 1)[1] if "-" in fdir.name else fdir.name)
-    status = state.get("current_stage", "未知")
+    status = display_bug_stage(state.get("current_stage", "未知"))
     rel = str(fdir.relative_to(DOCS_DIR)).replace("\\", "/")
     new_entry = f"| {date} | {bug_id} | {bug_name} | {status} | [[{rel}/00-总览]] |"
 
@@ -1098,6 +1361,8 @@ def sync_readme_bugfix_status(fdir: Path, state: dict):
 
 
 def save_state(fdir: Path, state: dict):
+    normalize_bug_state_inplace(state)
+    normalize_feature_state_inplace(state)
     state["last_updated"] = now_iso()
     snap_dir = fdir / ".state-snapshots"
     snap_dir.mkdir(exist_ok=True)
@@ -1205,7 +1470,7 @@ def build_recovery_review_for_outputs(fdir: Path, outputs, done_definition=None)
     all_present = True
     for output in outputs or []:
         output_path = resolve_output_path(fdir, output)
-        exists = output_path.exists()
+        exists = output_path.exists() and (output_path.is_dir() or output_path.stat().st_size > 0)
         checks.append({
             "output": output,
             "resolved_path": str(output_path),
@@ -1281,6 +1546,9 @@ def update_recovery_card(fdir: Path, state: dict):
     else:
         baseline_summary = format_baseline_summary(state)
     current_packet = state.get("context_manifest", {}).get("current_packet") or "未生成"
+    workflow_mode = bug_workflow_mode(state) if workflow_kind(state) == "bugfix" else feature_workflow_mode(state)
+    execution_mode = feature_execution_mode(state) if workflow_kind(state) == "feature" else None
+    input_mode = state.get("input_mode", "unknown") if workflow_kind(state) == "feature" else None
 
     log = ensure_step_log(state)
     completed = log.get("completed_steps", [])
@@ -1323,8 +1591,11 @@ def update_recovery_card(fdir: Path, state: dict):
 
     review_summary = summarize_recovery_review(recovery_review)
 
+    current_stage_display = display_stage_for_state(state, state["current_stage"])
+    mode_display = workflow_mode if workflow_kind(state) == "bugfix" else f"工作流:{workflow_mode} / 执行:{execution_mode} / 输入:{input_mode}"
+
     card = f"""```
-[恢复确认] {workflow_id(state)} ({workflow_name(state)}) · {state['current_stage']} · step {state.get('step_index',0)}/{state.get('step_total',1)}
+[恢复确认] {workflow_id(state)} ({workflow_name(state)}) · {current_stage_display} · {mode_display} · step {state.get('step_index',0)}/{state.get('step_total',1)}
 当前状态: {state.get('current_step', '未设置')}
 基线: {baseline_summary}
 当前上下文包: {current_packet}
@@ -1367,7 +1638,8 @@ def append_execution_log(fdir: Path, stage: str, step: str, status: str, conclus
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     icon = "✓" if status == "done" else ("✗" if status == "failed" else "○")
     concl_short = conclusion[:60] + ("..." if len(conclusion) > 60 else "")
-    new_row = f"| {ts} | {stage} | {step} | {icon} {status} | {concl_short} |"
+    display_stage = display_bug_stage(stage) if isinstance(stage, str) and stage.startswith("B") else display_feature_stage(stage)
+    new_row = f"| {ts} | {display_stage} | {step} | {icon} {status} | {concl_short} |"
 
     # 找到执行日志表的表头行，从分隔符行后开始追加
     lines = content.split("\n")
@@ -1469,14 +1741,16 @@ def update_nav(fdir: Path, state: dict):
     if not f.exists(): return
     content = f.read_text(encoding="utf-8")
 
-    stage_line = f"**当前阶段**: {state['current_stage']} (step {state.get('step_index',0)}/{state.get('step_total',1)})"
+    current_stage = display_stage_for_state(state, state["current_stage"])
+    stage_line = f"**当前阶段**: {current_stage} (step {state.get('step_index',0)}/{state.get('step_total',1)})"
     status_line = f"**当前状态**: {state.get('current_step', '?')}"
 
     content = re.sub(r"\*\*当前阶段\*\*:.*", stage_line, content)
     content = re.sub(r"\*\*当前状态\*\*:.*", status_line, content)
 
     ts = datetime.now().strftime("%Y-%m-%d")
-    entry = f"| {ts} | {state['current_stage']}: {state.get('current_step','?')} |"
+    nav_stage = current_stage
+    entry = f"| {ts} | {nav_stage}: {state.get('current_step','?')} |"
     if entry not in content:
         content = content.rstrip() + f"\n{entry}\n"
 
@@ -1542,7 +1816,7 @@ def cmd_progress(fdir: Path, note_input: str):
 
 def cmd_check(fdir: Path):
     s = load_state(fdir)
-    stage = s.get("current_stage", "?")
+    stage = display_stage_for_state(s, s.get("current_stage", "?"))
     step = s.get("current_step", "?")
     log = s.get("current_step_log", {})
 
@@ -1567,6 +1841,12 @@ def cmd_check(fdir: Path):
     print(f"  已完成: {len(log.get('completed_steps', []))}")
     print(f"  待办: {', '.join(log.get('pending_steps', [])) or '无'}")
     print(f"  上下文: {log.get('context_usage_pct', 0)}%")
+    if workflow_kind(s) == "bugfix":
+        print(f"  模式: {bug_workflow_mode(s)}")
+    else:
+        print(f"  工作流模式: {feature_workflow_mode(s)}")
+        print(f"  执行模式: {feature_execution_mode(s)}")
+        print(f"  输入: {s.get('input_mode','?')}")
 
     exc = s.get("exception_log", [])
     if exc:
@@ -1593,12 +1873,22 @@ def cmd_approve(fdir: Path, action: str, note: str = ""):
 
     t = transitions[action]
 
-    if s["current_stage"] not in t["from_stages"]:
+    current_stage = canonical_stage_for_state(s, s["current_stage"])
+    s["current_stage"] = current_stage
+    if current_stage not in canonical_stage_list_for_state(s, t["from_stages"]):
         print(red(f"❌ 当前阶段 '{s['current_stage']}' 不允许 '{action}'"))
         print(red(f"   需要在 {t['from_stages']} 阶段执行"))
         sys.exit(1)
 
-    failed = [k for k in t.get("prereqs_checklist", [])
+    prereqs = list(t.get("prereqs_checklist", []))
+    if workflow_kind(s) == "bugfix" and action == "approve-release":
+        mode = bug_workflow_mode(s)
+        if mode == "standard":
+            prereqs.extend(["fact_chain_done", "retrospective_done", "ai_record_done"])
+        else:
+            prereqs.extend(["fact_chain_done"])
+
+    failed = [k for k in prereqs
               if not s.get("checklist", {}).get(k)]
     if failed:
         print(red(f"❌ 前置条件未满足:"))
@@ -1609,7 +1899,7 @@ def cmd_approve(fdir: Path, action: str, note: str = ""):
     # 应用转移
     old_stage = s["current_stage"]
     if t.get("to_stage"):
-        s["current_stage"] = t["to_stage"]
+        s["current_stage"] = canonical_stage_for_state(s, t["to_stage"])
     if t.get("to_step"):
         s["current_step"] = t["to_step"]
     if t.get("step_index") is not None:
@@ -1657,8 +1947,10 @@ def cmd_approve(fdir: Path, action: str, note: str = ""):
     append_execution_log(fdir, old_stage, action, "done",
                           note or t["description"])
 
+    display_old_stage = display_stage_for_state(s, old_stage)
+    display_new_stage = display_stage_for_state(s, s["current_stage"])
     print()
-    print(green(f"✅ 门禁通过 [{t['anchor']}]: {old_stage} → {s['current_stage']}"))
+    print(green(f"✅ 门禁通过 [{t['anchor']}]: {display_old_stage} → {display_new_stage}"))
     print(cyan(f"   {t['description']}\n"))
     print(bold("下一步:"))
     for a in t["allowed_next"]:
@@ -1679,6 +1971,22 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
 
     data = parse_required_json_object(conclusion_input, "step-done")
     validate_step_done_data(data)
+
+    if workflow_kind(s) in {"bugfix", "feature"}:
+        key_conclusions = data.get("key_conclusions", [])
+        has_business_conclusion = any(
+            isinstance(item, str) and item.strip() and not item.strip().startswith("规范检查结论:")
+            for item in key_conclusions
+        )
+        has_normative_conclusion = any(
+            isinstance(item, str)
+            and re.search(r"规范检查结论\s*:\s*\[\d+/6 项通过\]", item)
+            for item in key_conclusions
+        )
+        if len(key_conclusions) < 2 or not has_business_conclusion or not has_normative_conclusion:
+            print(red("❌ step-done 必须同时包含业务结论和规范检查结论。"))
+            print(yellow("请至少提供两条 key_conclusions，其中一条必须是“规范检查结论: [N/6 项通过]”。"))
+            sys.exit(1)
 
     started_entry = find_latest_started_step(s, step_name)
     if not started_entry:
@@ -1714,6 +2022,10 @@ def cmd_step_done(fdir: Path, step_name: str, conclusion_input: str):
     outputs = entry.get("outputs", [])
     done_definition = data.get("done_definition", [])
     mark_in_progress_review(s, build_recovery_review_for_outputs(fdir, outputs, done_definition))
+    if outputs and not s.get("in_progress_step", {}).get("recovery_review", {}).get("all_outputs_present", True):
+        print(red("❌ step-done 失败：存在已声明输出但未通过读回验证。"))
+        print(yellow("请先把输出文件写入磁盘并读回确认非空，再继续关闭当前步骤。"))
+        sys.exit(1)
     append_completed_step(s, entry)
     mark_started_step_completed(s, step_name, entry["completed_at"], entry["status"])
     if workflow_kind(s) == "bugfix" and entry["status"] == "done":
@@ -1808,24 +2120,13 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
     log = s.setdefault("subagent_log", [])
     target = None
     dispatch_id = data.get("dispatch_id")
-    if _non_empty_string(dispatch_id):
-        for entry in reversed(log):
-            if entry.get("dispatch_id") == dispatch_id and entry.get("status") == "dispatched":
-                target = entry
-                break
-    else:
-        print(yellow("⚠️ 建议携带 dispatch_id 以防并行错配"))
-        for entry in reversed(log):
-            if (
-                entry.get("subagent") == subagent_name
-                and entry.get("status") == "dispatched"
-                and entry.get("stage") == s.get("current_stage")
-                and entry.get("step") == s.get("current_step")
-            ):
-                target = entry
-                break
+    for entry in reversed(log):
+        if entry.get("dispatch_id") == dispatch_id and entry.get("status") == "dispatched":
+            target = entry
+            break
     if target is None:
         print(red(f"❌ 找不到未完成的 subagent-start 记录: {subagent_name}"))
+        print(red(f"  dispatch_id: {dispatch_id}"))
         print(yellow("未执行 subagent-start 的派遣视为未发生，禁止事后补 subagent-done。"))
         sys.exit(1)
     target.update({
@@ -1876,8 +2177,9 @@ def cmd_auto(fdir: Path, key: str):
         sys.exit(1)
 
     t = transitions[key]
-    old_stage = s["current_stage"]
-    if s["current_stage"] not in t["from_stages"]:
+    old_stage = canonical_stage_for_state(s, s["current_stage"])
+    s["current_stage"] = old_stage
+    if old_stage not in canonical_stage_list_for_state(s, t["from_stages"]):
         print(red(f"❌ 当前阶段 '{s['current_stage']}' 不匹配 (需要: {t['from_stages']})"))
         sys.exit(1)
 
@@ -1889,10 +2191,21 @@ def cmd_auto(fdir: Path, key: str):
             runtime = s.setdefault("workflow_runtime", {})
             runtime["doc_root"] = str(PROJECT_ROOT)
             runtime["code_worktree_path"] = str(candidates[0])
+    elif key == "docs-only-worktree-not-required":
+        runtime = s.setdefault("workflow_runtime", {})
+        runtime["doc_root"] = str(PROJECT_ROOT)
+        runtime["code_worktree_path"] = None
+        s.setdefault("exception_log", []).append({
+            "type": "docs-only-worktree-not-required",
+            "detail": "本 feature 只修改文档、规范、Agent 或 Skill，按人工确认留在当前分支执行，不创建代码 worktree。",
+            "stage": old_stage,
+            "step": s.get("current_step", "?"),
+            "recorded_at": now_iso()
+        })
 
     cl = t.get("checklist_set")
     if cl: s["checklist"][cl] = True
-    if "to_stage" in t: s["current_stage"] = t["to_stage"]
+    if "to_stage" in t: s["current_stage"] = canonical_stage_for_state(s, t["to_stage"])
     s["current_step"] = t["sets_step"]
     if t.get("step_index") is not None: s["step_index"] = t["step_index"]
     if "step_total" in t: s["step_total"] = t["step_total"]
@@ -1924,8 +2237,9 @@ def cmd_auto(fdir: Path, key: str):
     append_execution_log(fdir, old_stage, key, "done",
                          f"自动转移完成：{key}")
 
+    display_new_stage = display_stage_for_state(s, s["current_stage"])
     print(green(f"✅ 自动转移: {key}"))
-    print(cyan(f"   {s['current_stage']} → {t['sets_step']}"))
+    print(cyan(f"   {display_stage_for_state(s, old_stage)} → {display_new_stage}"))
     print(f"   下一步: {t['allowed_next']}")
 
 
@@ -1953,35 +2267,41 @@ def cmd_exception(fdir: Path, exc_type: str, reason: str):
         print(yellow(f"⚠️ worktree 阻塞已记录，未放行写代码: {reason}"))
     elif exc_type == "subagent-fallback":
         stage = s.get("current_stage")
+        existing_allowed = list(s.get("allowed_next_actions", []))
         if stage == "实现":
-            s["allowed_next_actions"] = [
+            fallback_allowed = [
                 "execute-current-T-in-code-worktree",
                 "write-implementation-record-in-doc-root",
                 "run-focused-tests-in-code-worktree"
             ]
         elif stage == "测试验证":
-            s["allowed_next_actions"] = [
+            fallback_allowed = [
                 "run-test-validation-mainline",
                 "write-validation-record"
             ]
         elif stage == "构建验收":
-            s["allowed_next_actions"] = [
+            fallback_allowed = [
                 "run-mvn-package",
                 "提示人工本地启动部署",
                 "run-http-acceptance-mainline"
             ]
         elif stage == "交叉验证":
-            s["allowed_next_actions"] = [
+            fallback_allowed = [
                 "run-full-chain-validation-mainline",
                 "run-rdtv-closure-check",
                 "write-validation-record"
             ]
         else:
-            s["allowed_next_actions"] = [
+            fallback_allowed = [
                 "execute-current-stage-mainline",
                 "write-required-records",
                 "run-required-validators"
             ]
+        merged_allowed = []
+        for action in existing_allowed + fallback_allowed:
+            if action not in merged_allowed:
+                merged_allowed.append(action)
+        s["allowed_next_actions"] = merged_allowed
         s["blocked_actions"] = [b for b in s.get("blocked_actions", []) if not b.startswith("run-")]
         print(yellow(f"⚠️ 子Agent fallback 已记录: {reason}"))
 
@@ -1996,10 +2316,15 @@ def cmd_status(fdir: Path):
     s = load_state(fdir)
     print()
     print(bold(f"{workflow_kind(s)}: {workflow_id(s)} — {workflow_name(s)}"))
-    print(f"  阶段: {s['current_stage']}  步骤: {s['current_step']}")
+    display_stage = display_stage_for_state(s, s["current_stage"])
+    print(f"  阶段: {display_stage}  步骤: {s['current_step']}")
     print(f"  进度: {s.get('step_index',0)}/{s.get('step_total',1)}")
+    if workflow_kind(s) == "bugfix":
+        print(f"  模式: {bug_workflow_mode(s)}")
     if workflow_kind(s) == "feature":
-        print(f"  模式: {s.get('input_mode','?')}")
+        print(f"  工作流模式: {feature_workflow_mode(s)}")
+        print(f"  执行模式: {feature_execution_mode(s)}")
+        print(f"  输入: {s.get('input_mode','?')}")
     print(f"  创建: {s.get('created_at','?')[:19]}")
     print(f"  更新: {s.get('last_updated','?')[:19]}")
     in_progress = s.get("in_progress_step")
