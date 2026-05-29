@@ -37,6 +37,7 @@ PROJECT_ROOT  = DOCS_DIR.parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 from workflow_config import load_project_config as load_project_config_file
+from workflow_config import load_build_config as load_build_config_file
 from workflow_config import load_workflow_config as load_workflow_config_file
 from workflow_config import WorkflowConfigError
 from workflow_def import load_workflow_definition
@@ -487,13 +488,6 @@ def cyan(t):     return color(t, "36")
 def bold(t):     return color(t, "1")
 
 
-DEFAULT_BUILD_CONFIG = {
-    "artifact_pattern": "target/*.jar",
-    "artifact_label": "Jar",
-    "build_command": "mvn -DskipTests package",
-    "build_record_keyword": "Jar",
-}
-
 def load_project_config() -> dict:
     try:
         return load_project_config_file(WORKFLOW_DIR)
@@ -503,20 +497,11 @@ def load_project_config() -> dict:
 
 
 def load_build_config() -> dict:
-    raw = load_project_config()
-    if not raw:
-        print(yellow("使用默认 Java/Maven 构建配置"))
-        return dict(DEFAULT_BUILD_CONFIG)
-    build = raw.get("build")
-    if not isinstance(build, dict):
-        print(yellow("project_config.json 缺少 build 配置，使用默认 Java/Maven 构建配置"))
-        return dict(DEFAULT_BUILD_CONFIG)
-    merged = dict(DEFAULT_BUILD_CONFIG)
-    for key in DEFAULT_BUILD_CONFIG:
-        value = build.get(key)
-        if isinstance(value, str) and value.strip():
-            merged[key] = value.strip()
-    return merged
+    try:
+        return load_build_config_file(WORKFLOW_DIR)
+    except WorkflowConfigError as exc:
+        print(red(f"❌ project_config.json 配置错误: {exc}"))
+        sys.exit(1)
 
 
 def load_workflow_config() -> dict:

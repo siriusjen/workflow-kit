@@ -76,6 +76,22 @@ docs/
 
 ## 构建 profile 示例
 
+`docs/.workflow/project_config.json` 支持以下顶层配置段：
+
+| 配置段 | 键 | 默认值 | 类型 |
+|---|---|---|---|
+| `build` | `artifact_pattern` | `target/*.jar` | 非空字符串 |
+| `build` | `artifact_label` | `Jar` | 非空字符串 |
+| `build` | `build_command` | `mvn -DskipTests package` | 非空字符串 |
+| `build` | `build_record_keyword` | `Jar` | 非空字符串 |
+| `workflow` | `context_warning_threshold` | `50` | 非负整数 |
+| `workflow` | `context_compact_threshold` | `70` | 非负整数 |
+| `workflow` | `subagent_retry_threshold` | `3` | 非负整数 |
+| `workflow` | `feature_flow_enabled` | `true` | 布尔值 |
+| `workflow` | `bugfix_flow_enabled` | `true` | 布尔值 |
+
+配置值类型错误会直接报 `project_config.json` 配置错误，不再静默回退默认值。
+
 默认 Java profile:
 
 ```json

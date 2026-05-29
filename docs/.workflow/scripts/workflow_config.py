@@ -20,6 +20,13 @@ DEFAULT_WORKFLOW_CONFIG = {
     "bugfix_flow_enabled": True,
 }
 
+DEFAULT_BUILD_CONFIG = {
+    "artifact_pattern": "target/*.jar",
+    "artifact_label": "Jar",
+    "build_command": "mvn -DskipTests package",
+    "build_record_keyword": "Jar",
+}
+
 
 def load_project_config(workflow_dir: Path) -> dict:
     config_file = workflow_dir / "project_config.json"
@@ -55,6 +62,29 @@ def load_workflow_config(workflow_dir: Path) -> dict:
         else:
             expected = "boolean" if isinstance(default, bool) else "non-negative integer"
             errors.append(f"workflow.{key} must be a {expected}")
+    if errors:
+        raise WorkflowConfigError("; ".join(errors))
+    return merged
+
+
+def load_build_config(workflow_dir: Path) -> dict:
+    raw = load_project_config(workflow_dir)
+    build = raw.get("build") if isinstance(raw, dict) else None
+    merged = dict(DEFAULT_BUILD_CONFIG)
+    if build is None:
+        return merged
+    if not isinstance(build, dict):
+        raise WorkflowConfigError("build must be a JSON object")
+
+    errors = []
+    for key in DEFAULT_BUILD_CONFIG:
+        value = build.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str) and value.strip():
+            merged[key] = value.strip()
+        else:
+            errors.append(f"build.{key} must be a non-empty string")
     if errors:
         raise WorkflowConfigError("; ".join(errors))
     return merged

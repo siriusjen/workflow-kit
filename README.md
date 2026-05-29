@@ -24,6 +24,22 @@ python3 your-project/docs/.workflow/scripts/install_entry.py --target your-proje
 
 ## Build Profiles
 
+`docs/.workflow/project_config.json` supports these top-level sections:
+
+| Section | Key | Default | Type |
+|---|---|---|---|
+| `build` | `artifact_pattern` | `target/*.jar` | non-empty string |
+| `build` | `artifact_label` | `Jar` | non-empty string |
+| `build` | `build_command` | `mvn -DskipTests package` | non-empty string |
+| `build` | `build_record_keyword` | `Jar` | non-empty string |
+| `workflow` | `context_warning_threshold` | `50` | non-negative integer |
+| `workflow` | `context_compact_threshold` | `70` | non-negative integer |
+| `workflow` | `subagent_retry_threshold` | `3` | non-negative integer |
+| `workflow` | `feature_flow_enabled` | `true` | boolean |
+| `workflow` | `bugfix_flow_enabled` | `true` | boolean |
+
+Invalid value types fail fast with a `project_config.json` error instead of falling back silently.
+
 Default Java profile:
 
 ```json
