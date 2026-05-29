@@ -1,0 +1,197 @@
+{
+  "feature_id": "F01",
+  "updated_at": "2026-05-29T16:36:00+08:00",
+  "tasks": [
+    {
+      "t_number": "T01",
+      "title": "安装入口受管块合并注入",
+      "r_mapping": ["R01", "R02"],
+      "d_mapping": ["D01"],
+      "scope": [
+        "docs/.workflow/scripts/install_entry.py",
+        "docs/.workflow/templates/entry/AGENTS.md.tpl",
+        "docs/.workflow/templates/entry/CLAUDE.md.tpl",
+        "docs/.workflow/scripts/tests/test_install_entry.py",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "INSTALL.md",
+        "使用指南.md",
+        "docs/.workflow/工作流规范.md"
+      ],
+      "done_definition": [
+        "安装脚本可创建、追加、替换受管块",
+        "dry-run 输出 diff 且不写文件",
+        "入口文件标记外内容保持不变",
+        "文档不再引用 开发AGENTS 或 开发CLAUDE"
+      ],
+      "acceptance": [
+        "python3 docs/.workflow/scripts/tests/test_install_entry.py",
+        "python3 docs/.workflow/scripts/tests/test_workflow_gates.py",
+        "grep -rn \"开发AGENTS\\|开发CLAUDE\" AGENTS.md CLAUDE.md INSTALL.md 使用指南.md docs/.workflow/工作流规范.md 返回空"
+      ]
+    },
+    {
+      "t_number": "T02",
+      "title": "补充重构前行为回归测试",
+      "r_mapping": ["R03"],
+      "d_mapping": ["D02"],
+      "scope": ["docs/.workflow/scripts/tests/test_workflow_gates.py"],
+      "done_definition": [
+        "覆盖人工锚点、docs-only、worktree、artifact/http 和 bug 链阻断",
+        "作为后续脚本重构安全网"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    },
+    {
+      "t_number": "T03",
+      "title": "阶段门禁子Agent定义单一事实源",
+      "r_mapping": ["R04"],
+      "d_mapping": ["D03"],
+      "scope": [
+        "docs/.workflow/workflow_definition.json",
+        "docs/.workflow/scripts/workflow_def.py",
+        "docs/.workflow/scripts/stage_gates.py",
+        "docs/.workflow/scripts/context_packets.py",
+        "docs/.workflow/scripts/init_feature.py",
+        "docs/.workflow/scripts/validators.py",
+        "docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ],
+      "done_definition": [
+        "重复阶段和子Agent定义从共享定义加载",
+        "缺键或类型错误明确报错",
+        "现有行为等价"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    },
+    {
+      "t_number": "T04",
+      "title": "校验器由门禁自动调度",
+      "r_mapping": ["R05"],
+      "d_mapping": ["D04"],
+      "scope": [
+        "docs/.workflow/scripts/stage_gates.py",
+        "docs/.workflow/scripts/validators.py",
+        "docs/.workflow/workflow_definition.json",
+        "docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ],
+      "done_definition": [
+        "validator 函数可被 import 并返回结构化结果",
+        "validator CLI 不再推进 state",
+        "stage_gates auto 负责校验并转移"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    },
+    {
+      "t_number": "T05",
+      "title": "声明式前置条件与 state 元数据",
+      "r_mapping": ["R06", "R07"],
+      "d_mapping": ["D05"],
+      "scope": [
+        "docs/.workflow/scripts/stage_gates.py",
+        "docs/.workflow/workflow_definition.json",
+        "docs/.workflow/工作流规范.md",
+        "docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ],
+      "done_definition": [
+        "auto gate 前置条件通过统一 evaluator 判断",
+        "docs_only/worktree/build_config 等运行元数据写入 state",
+        "旧 state 缺字段仍可读取"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    },
+    {
+      "t_number": "T06",
+      "title": "上下文包模板化与缺口提示",
+      "r_mapping": ["R08"],
+      "d_mapping": ["D06"],
+      "scope": [
+        "docs/.workflow/templates/上下文包.md.tpl",
+        "docs/.workflow/templates/bug上下文包.md.tpl",
+        "docs/.workflow/scripts/context_packets.py",
+        "docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ],
+      "done_definition": [
+        "上下文包正文从模板渲染",
+        "must-read 缺失时输出待生成清单"
+      ],
+      "acceptance": [
+        "python3 docs/.workflow/scripts/context_packets.py build F01 S6 --task T01",
+        "python3 docs/.workflow/scripts/context_packets.py build F01 S8",
+        "python3 docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ]
+    },
+    {
+      "t_number": "T07",
+      "title": "公共工具模块与配置 schema",
+      "r_mapping": ["R09"],
+      "d_mapping": ["D07"],
+      "scope": [
+        "docs/.workflow/scripts/workflow_common.py",
+        "docs/.workflow/scripts/workflow_config.py",
+        "docs/.workflow/scripts/stage_gates.py",
+        "docs/.workflow/scripts/init_feature.py",
+        "docs/.workflow/scripts/context_packets.py",
+        "docs/.workflow/scripts/validators.py",
+        "docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ],
+      "done_definition": [
+        "公共 JSON/state/校验逻辑去重",
+        "project_config.json 类型错误明确失败",
+        "缺失键默认值可见"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    },
+    {
+      "t_number": "T08",
+      "title": "簿记命令降摩擦",
+      "r_mapping": ["R10"],
+      "d_mapping": ["D08"],
+      "scope": [
+        "docs/.workflow/scripts/stage_gates.py",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/.workflow/工作流规范.md",
+        "docs/.workflow/scripts/tests/test_workflow_gates.py"
+      ],
+      "done_definition": [
+        "单派遣 subagent-done 可省 dispatch_id",
+        "多派遣仍强制 dispatch_id",
+        "step-done 可默认当前步骤"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    },
+    {
+      "t_number": "T09",
+      "title": "文档语言无关叙事",
+      "r_mapping": ["R11"],
+      "d_mapping": ["D09"],
+      "scope": ["README.md", "INSTALL.md", "使用指南.md", "docs/.workflow/工作流规范.md"],
+      "done_definition": [
+        "开头明确 workflow-kit 语言无关",
+        "Java/Maven/Jar 只作为默认 profile",
+        "提供前端和 Go 配置示例"
+      ],
+      "acceptance": ["grep -n \"dist/\\*\\*\\/*\\|bin/\\*\\|Java/Maven\" README.md INSTALL.md 使用指南.md docs/.workflow/工作流规范.md"]
+    },
+    {
+      "t_number": "T10",
+      "title": "全链路验证与发布记录",
+      "r_mapping": ["R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R10", "R11"],
+      "d_mapping": ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09"],
+      "scope": [
+        "05-测试验证/测试记录-20260529.md",
+        "05-测试验证/构建记录-20260529.md",
+        "05-测试验证/HTTP验收清单-20260529.md",
+        "05-测试验证/HTTP验收记录-20260529.md",
+        "05-测试验证/全链路验证报告-20260529.md",
+        "03-落地计划/RDTV映射表.json"
+      ],
+      "done_definition": [
+        "所有测试记录通过",
+        "docs-only 构建和 HTTP 替代验收记录完整",
+        "RDTV 映射闭环"
+      ],
+      "acceptance": ["python3 docs/.workflow/scripts/tests/test_workflow_gates.py"]
+    }
+  ]
+}

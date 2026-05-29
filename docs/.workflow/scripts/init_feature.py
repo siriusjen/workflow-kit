@@ -36,11 +36,14 @@ PROJECT_ROOT  = DOCS_DIR.parent                       # project root
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 from workflow_config import load_workflow_config as load_workflow_config_file
+from workflow_config import WorkflowConfigError
+from workflow_def import load_workflow_definition
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
 TEMPLATES_DIR = WORKFLOW_DIR / "templates"
 
 VERSION = "2.1"
+WORKFLOW_DEFINITION = load_workflow_definition(WORKFLOW_DIR)
 
 
 def resolve_features_root() -> Path:
@@ -67,20 +70,7 @@ def cyan(t):     return color(t, "36")
 def bold(t):     return color(t, "1")
 def red(t):      return color(t, "31")
 
-FEATURE_STAGE_DISPLAY = {
-    "init": "init",
-    "S1-需求输入": "需求输入",
-    "S2-需求确认": "需求确认",
-    "S3-技术方案": "技术方案",
-    "S4-落地计划": "落地计划",
-    "S5-任务拆分": "任务拆分",
-    "S6-实现": "实现",
-    "S7-测试验证": "测试验证",
-    "S8-构建验收": "构建验收",
-    "S9-交叉验证": "交叉验证",
-    "S10-验收发布": "验收发布",
-    "done": "已完成",
-}
+FEATURE_STAGE_DISPLAY = WORKFLOW_DEFINITION.feature_stage_display
 
 
 def display_feature_stage(stage: str) -> str:
@@ -138,7 +128,11 @@ def atomic_write_text(path: Path, content: str):
 
 
 def load_workflow_config() -> dict:
-    return load_workflow_config_file(WORKFLOW_DIR)
+    try:
+        return load_workflow_config_file(WORKFLOW_DIR)
+    except WorkflowConfigError as exc:
+        print(red(f"❌ project_config.json 配置错误: {exc}"))
+        sys.exit(1)
 
 
 def ensure_feature_flow_enabled():

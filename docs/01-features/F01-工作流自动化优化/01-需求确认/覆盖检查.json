@@ -1,0 +1,37 @@
+{
+  "feature_id": "F01",
+  "checked_at": "2026-05-29T16:20:00+08:00",
+  "passed": true,
+  "dimensions": {
+    "main_flow": {
+      "covered": true,
+      "r_numbers": ["R01", "R02", "R03", "R04", "R05", "R06", "R08", "R09", "R10", "R11"],
+      "notes": "覆盖安装、测试安全网、声明式配置、门禁自动化、上下文包模板化、公共配置和文档泛化主流程。"
+    },
+    "exception_flow": {
+      "covered": true,
+      "r_numbers": ["R02", "R04", "R05", "R06", "R09", "R10"],
+      "notes": "覆盖模板缺失、配置错误、校验失败、多派遣无法自动匹配、旧 state 缺字段等异常。"
+    },
+    "boundary": {
+      "covered": true,
+      "r_numbers": ["R02", "R03", "R07", "R10"],
+      "notes": "覆盖干净目标目录、幂等重复运行、向后兼容和单/多派遣边界。"
+    },
+    "permission": {
+      "covered": true,
+      "r_numbers": ["R01", "R02"],
+      "notes": "安装脚本必须保留目标项目已有入口内容，不覆盖用户配置。"
+    },
+    "error_handling": {
+      "covered": true,
+      "r_numbers": ["R02", "R04", "R05", "R09", "R10"]
+    },
+    "acceptance": {
+      "covered": true,
+      "r_numbers": ["R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R10", "R11"]
+    }
+  },
+  "uncovered_inputs": [],
+  "block_reason": null
+}

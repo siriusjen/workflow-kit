@@ -38,42 +38,17 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 from workflow_config import load_project_config as load_project_config_file
 from workflow_config import load_workflow_config as load_workflow_config_file
+from workflow_config import WorkflowConfigError
+from workflow_def import load_workflow_definition
+import validators as workflow_validators
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
 BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
 
 MAX_SNAPSHOTS = 10
-KNOWN_SUBAGENTS = {
-    "需求交叉验证",
-    "技术方案设计",
-    "落地计划",
-    "任务拆分",
-    "任务实现",
-    "规格符合性复核",
-    "代码质量复核",
-    "测试验证",
-    "HTTP接口验收",
-    "全链路验证",
-    "Bug根因分析",
-    "Bug修复实现",
-    "Bug回归验证",
-    "Bug独立复核",
-}
-SUBAGENTS_BY_STAGE = {
-    "S2-需求确认": {"需求交叉验证"},
-    "S3-技术方案": {"技术方案设计"},
-    "S4-落地计划": {"落地计划"},
-    "S5-任务拆分": {"任务拆分"},
-    "S6-实现": {"任务实现", "规格符合性复核", "代码质量复核"},
-    "S7-测试验证": {"测试验证"},
-    "S8-构建验收": {"HTTP接口验收"},
-    "S9-交叉验证": {"全链路验证"},
-    "B1-诊断": {"Bug根因分析", "Bug独立复核"},
-    "B2-方案": {"Bug根因分析", "Bug独立复核"},
-    "B3-修复": {"Bug修复实现", "Bug独立复核"},
-    "B4-验证": {"Bug回归验证", "Bug独立复核"},
-    "done": set(),
-}
+WORKFLOW_DEFINITION = load_workflow_definition(WORKFLOW_DIR)
+KNOWN_SUBAGENTS = WORKFLOW_DEFINITION.known_subagents()
+SUBAGENTS_BY_STAGE = WORKFLOW_DEFINITION.subagents_by_stage_map
 
 
 def resolve_features_root() -> Path:
@@ -86,56 +61,8 @@ def resolve_features_root() -> Path:
 
 FEATURES_ROOT = resolve_features_root()
 
-FEATURE_STAGE_CANONICAL = {
-    "init": "init",
-    "S1": "S1-需求输入",
-    "S1-需求输入": "S1-需求输入",
-    "需求输入": "S1-需求输入",
-    "S2": "S2-需求确认",
-    "S2-需求确认": "S2-需求确认",
-    "需求确认": "S2-需求确认",
-    "S3": "S3-技术方案",
-    "S3-技术方案": "S3-技术方案",
-    "技术方案": "S3-技术方案",
-    "S4": "S4-落地计划",
-    "S4-落地计划": "S4-落地计划",
-    "落地计划": "S4-落地计划",
-    "S5": "S5-任务拆分",
-    "S5-任务拆分": "S5-任务拆分",
-    "任务拆分": "S5-任务拆分",
-    "S6": "S6-实现",
-    "S6-实现": "S6-实现",
-    "实现": "S6-实现",
-    "S7": "S7-测试验证",
-    "S7-测试验证": "S7-测试验证",
-    "测试验证": "S7-测试验证",
-    "S8": "S8-构建验收",
-    "S8-构建验收": "S8-构建验收",
-    "构建验收": "S8-构建验收",
-    "S9": "S9-交叉验证",
-    "S9-交叉验证": "S9-交叉验证",
-    "交叉验证": "S9-交叉验证",
-    "S10": "S10-验收发布",
-    "S10-验收发布": "S10-验收发布",
-    "验收发布": "S10-验收发布",
-    "done": "done",
-    "已完成": "done",
-}
-
-FEATURE_STAGE_DISPLAY = {
-    "init": "init",
-    "S1-需求输入": "需求输入",
-    "S2-需求确认": "需求确认",
-    "S3-技术方案": "技术方案",
-    "S4-落地计划": "落地计划",
-    "S5-任务拆分": "任务拆分",
-    "S6-实现": "实现",
-    "S7-测试验证": "测试验证",
-    "S8-构建验收": "构建验收",
-    "S9-交叉验证": "交叉验证",
-    "S10-验收发布": "验收发布",
-    "done": "已完成",
-}
+FEATURE_STAGE_CANONICAL = WORKFLOW_DEFINITION.feature_stage_aliases
+FEATURE_STAGE_DISPLAY = WORKFLOW_DEFINITION.feature_stage_display
 
 
 # ── 状态转移定义 ──────────────────────────────────────────────────────────────
@@ -568,10 +495,11 @@ DEFAULT_BUILD_CONFIG = {
 }
 
 def load_project_config() -> dict:
-    raw = load_project_config_file(WORKFLOW_DIR)
-    if not raw and (WORKFLOW_DIR / "project_config.json").exists():
-        print(yellow("project_config.json 解析失败，使用默认 Java/Maven 构建配置"))
-    return raw
+    try:
+        return load_project_config_file(WORKFLOW_DIR)
+    except WorkflowConfigError as exc:
+        print(red(f"❌ project_config.json 配置错误: {exc}"))
+        sys.exit(1)
 
 
 def load_build_config() -> dict:
@@ -592,7 +520,29 @@ def load_build_config() -> dict:
 
 
 def load_workflow_config() -> dict:
-    return load_workflow_config_file(WORKFLOW_DIR)
+    try:
+        return load_workflow_config_file(WORKFLOW_DIR)
+    except WorkflowConfigError as exc:
+        print(red(f"❌ project_config.json 配置错误: {exc}"))
+        sys.exit(1)
+
+
+def default_workflow_runtime() -> dict:
+    return {"doc_root": None, "code_worktree_path": None}
+
+
+def ensure_workflow_runtime(state: dict) -> bool:
+    runtime = state.get("workflow_runtime")
+    changed = False
+    if not isinstance(runtime, dict):
+        runtime = {}
+        state["workflow_runtime"] = runtime
+        changed = True
+    for key, value in default_workflow_runtime().items():
+        if key not in runtime:
+            runtime[key] = value
+            changed = True
+    return changed
 
 
 def _normalize_action_text(value: str) -> str:
@@ -994,8 +944,8 @@ def validate_subagent_paths(fdir: Path, label: str, paths: list, must_exist: boo
 
 def validate_subagent_result(data: dict):
     errors = []
-    if not _non_empty_string(data.get("dispatch_id")):
-        errors.append("dispatch_id 必须是非空字符串")
+    if data.get("dispatch_id") is not None and not _non_empty_string(data.get("dispatch_id")):
+        errors.append("dispatch_id 如果提供，必须是非空字符串")
     if not _non_empty_string(data.get("summary")):
         errors.append("summary 必须是非空字符串")
     if not _non_empty_string_list(data.get("output_paths")):
@@ -1011,6 +961,27 @@ def validate_subagent_result(data: dict):
         for err in errors:
             print(red(f"  ✗ {err}"))
         sys.exit(1)
+
+
+def find_open_subagent_dispatch(log: list, subagent_name: str, dispatch_id: Optional[str]) -> Optional[dict]:
+    if dispatch_id:
+        for entry in reversed(log):
+            if entry.get("dispatch_id") == dispatch_id and entry.get("status") == "dispatched":
+                return entry
+        return None
+
+    candidates = [
+        entry for entry in log
+        if entry.get("subagent") == subagent_name and entry.get("status") == "dispatched"
+    ]
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        print(red(f"❌ 存在多个未完成的 {subagent_name} 派遣，subagent-done 必须提供 dispatch_id。"))
+        for entry in candidates:
+            print(red(f"  ✗ dispatch_id: {entry.get('dispatch_id', '?')}"))
+        sys.exit(1)
+    return None
 
 
 def _strip_yaml_value(value: str) -> str:
@@ -1070,132 +1041,121 @@ def validate_agent_prerequisites(fdir: Path, agent_file: Path):
         sys.exit(1)
 
 
-def validate_auto_prereqs(fdir: Path, state: dict, key: str):
-    if key == "openspec-decision-recorded":
-        records = sorted((fdir / "01-需求确认").glob("OpenSpec决策记录-*.md"))
-        if not records:
-            print(red("❌ 缺少 OpenSpec 决策记录: 01-需求确认/OpenSpec决策记录-YYYYMMDD.md"))
-            print(yellow("请记录本需求使用 OpenSpec 的模式：structure-only 或 formal-change。"))
-            sys.exit(1)
-        latest = records[-1].read_text(encoding="utf-8")
-        if not re.search(r"(structure-only|formal-change)", latest, flags=re.I):
-            print(red(f"❌ OpenSpec 决策记录未明确 mode: {records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-        if "decision" not in latest.lower():
-            print(red(f"❌ OpenSpec 决策记录未明确 decision 字段: {records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-        if re.search(r"mode\s*[:：]\s*formal-change", latest, flags=re.I):
+def _regex_flags(value: str) -> int:
+    flags = 0
+    if isinstance(value, str) and "i" in value.lower():
+        flags |= re.I
+    return flags
+
+
+def _format_prereq_message(template: str, build_cfg: Optional[dict] = None) -> str:
+    values = build_cfg or {}
+    try:
+        return template.format(**values)
+    except KeyError:
+        return template
+
+
+def _latest_match(fdir: Path, pattern: str) -> Optional[Path]:
+    matches = sorted(fdir.glob(pattern))
+    return matches[-1] if matches else None
+
+
+def _fail_auto_prereq(message: str, hint: Optional[str] = None):
+    print(red(f"❌ {message}"))
+    if hint:
+        print(yellow(hint))
+    sys.exit(1)
+
+
+def _latest_content_or_fail(fdir: Path, prereq: dict, build_cfg: Optional[dict] = None) -> tuple[Path, str]:
+    pattern = prereq.get("pattern") or prereq.get("decision_pattern")
+    latest = _latest_match(fdir, pattern)
+    if not latest:
+        _fail_auto_prereq(
+            _format_prereq_message(prereq.get("message", f"缺少文件: {pattern}"), build_cfg),
+            _format_prereq_message(prereq.get("hint", ""), build_cfg) or None,
+        )
+    return latest, latest.read_text(encoding="utf-8")
+
+
+def _validate_auto_prereq(fdir: Path, state: dict, prereq: dict):
+    ptype = prereq.get("type")
+    build_cfg = load_build_config() if ptype in {"artifact_exists", "build_record_mentions_artifact"} else None
+
+    if ptype == "checklist_true":
+        key = prereq.get("key")
+        if not state.get("checklist", {}).get(key):
+            _fail_auto_prereq(prereq.get("message", f"checklist 未完成: {key}"), prereq.get("hint"))
+    elif ptype == "glob_exists":
+        pattern = prereq.get("pattern")
+        if not list(fdir.glob(pattern)):
+            _fail_auto_prereq(prereq.get("message", f"缺少文件: {pattern}"), prereq.get("hint"))
+    elif ptype == "latest_glob":
+        _latest_content_or_fail(fdir, prereq)
+    elif ptype == "latest_file_matches":
+        latest, content = _latest_content_or_fail(fdir, prereq)
+        regex = prereq.get("regex", "")
+        if not re.search(regex, content, flags=_regex_flags(prereq.get("flags", ""))):
+            message = prereq.get("message", "文件内容不满足要求")
+            _fail_auto_prereq(f"{message}: {latest.relative_to(fdir)}", prereq.get("hint"))
+    elif ptype == "recent_files_match":
+        pattern = prereq.get("pattern")
+        matches = sorted(fdir.glob(pattern))
+        if not matches:
+            _fail_auto_prereq(prereq.get("message", f"缺少文件: {pattern}"), prereq.get("hint"))
+        limit = prereq.get("limit", 3)
+        if not isinstance(limit, int) or limit <= 0:
+            limit = 3
+        content = "\n".join(path.read_text(encoding="utf-8") for path in matches[-limit:])
+        if not re.search(prereq.get("regex", ""), content, flags=_regex_flags(prereq.get("flags", ""))):
+            _fail_auto_prereq(prereq.get("message", "最近文件内容不满足要求"), prereq.get("hint"))
+    elif ptype == "artifact_exists":
+        artifacts = sorted(PROJECT_ROOT.glob(build_cfg["artifact_pattern"]))
+        if not artifacts:
+            _fail_auto_prereq(
+                _format_prereq_message(prereq.get("message", "未找到构建产物"), build_cfg),
+                _format_prereq_message(prereq.get("hint", ""), build_cfg) or None,
+            )
+    elif ptype == "build_record_mentions_artifact":
+        latest, content = _latest_content_or_fail(fdir, prereq, build_cfg)
+        record_keyword = re.escape(build_cfg["build_record_keyword"])
+        artifact_pattern = re.escape(build_cfg["artifact_pattern"].replace("*", ""))
+        if not re.search(record_keyword, content, flags=re.I) and not re.search(artifact_pattern, content, flags=re.I):
+            message = _format_prereq_message(prereq.get("message", "构建记录未明确产物路径"), build_cfg)
+            _fail_auto_prereq(f"{message}: {latest.relative_to(fdir)}", prereq.get("hint"))
+    elif ptype == "code_worktree_exists":
+        if not code_worktrees():
+            _fail_auto_prereq(prereq.get("message", "未检测到独立代码 worktree"), prereq.get("hint"))
+    elif ptype == "formal_change_has_local_change":
+        _latest, content = _latest_content_or_fail(fdir, {
+            "pattern": prereq.get("decision_pattern"),
+            "message": prereq.get("message"),
+            "hint": prereq.get("hint"),
+        })
+        if re.search(r"mode\s*[:：]\s*formal-change", content, flags=re.I):
             local_changes = [
-                path for path in (fdir / "openspec" / "changes").glob("*")
+                path for path in fdir.glob(prereq.get("changes_glob", "openspec/changes/*"))
                 if path.is_dir()
             ]
             if not local_changes:
-                print(red("❌ formal-change 必须在当前 feature 的 openspec/changes/<change-id>/ 下创建权威文档。"))
-                sys.exit(1)
-            if "authoritative_location" not in latest:
-                print(red(f"❌ formal-change 决策记录未声明 authoritative_location: {records[-1].relative_to(fdir)}"))
-                sys.exit(1)
-    elif key == "rd-mapping-complete":
-        if not state.get("checklist", {}).get("fact_inheritance_check"):
-            print(red("❌ 技术方案进入落地计划前必须先通过需求事实继承一致性校验。"))
-            print(yellow("请先执行: python3 docs/.workflow/scripts/validators.py fact_inheritance <FID>"))
-            sys.exit(1)
-    elif key == "artifact-package-done":
-        build_cfg = load_build_config()
-        build_records = sorted((fdir / "05-测试验证").glob("构建记录-*.md"))
-        artifacts = sorted(PROJECT_ROOT.glob(build_cfg["artifact_pattern"]))
-        if not build_records:
-            print(red("❌ 缺少构建记录: 05-测试验证/构建记录-YYYYMMDD.md"))
-            sys.exit(1)
-        if not artifacts:
-            print(red(f"❌ 未找到 {build_cfg['artifact_label']} 产物: {build_cfg['artifact_pattern']}"))
-            print(yellow(f"请先执行 {build_cfg['build_command']} 或等效打包命令。"))
-            sys.exit(1)
-        latest = build_records[-1].read_text(encoding="utf-8")
-        record_keyword = re.escape(build_cfg["build_record_keyword"])
-        artifact_pattern = re.escape(build_cfg["artifact_pattern"].replace("*", ""))
-        if not re.search(record_keyword, latest, flags=re.I) and not re.search(artifact_pattern, latest, flags=re.I):
-            print(red(f"❌ 构建记录未明确 {build_cfg['artifact_label']} 路径: {build_records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-        if not re.search(r"passed\s*[:：]\s*(true|是|通过)|构建.*(成功|通过)", latest, flags=re.I):
-            print(red(f"❌ 构建记录未明确构建通过: {build_records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-    elif key == "docs-only-artifact-not-required":
-        build_records = sorted((fdir / "05-测试验证").glob("构建记录-*.md"))
-        if not build_records:
-            print(red("❌ docs-only 构建验收必须有构建记录: 05-测试验证/构建记录-YYYYMMDD.md"))
-            sys.exit(1)
-        latest = build_records[-1].read_text(encoding="utf-8")
-        if not re.search(r"not_applicable\s*[:：]\s*true|不适用|docs-only", latest, flags=re.I):
-            print(red(f"❌ docs-only 构建记录必须说明构建产物不适用: {build_records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-        if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
-            print(red(f"❌ docs-only 构建记录未明确 passed: true/通过: {build_records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-    elif key == "http-acceptance-done":
-        if not state.get("checklist", {}).get("artifact_package_done"):
-            print(red("❌ HTTP验收前必须先完成 artifact_package_done。"))
-            sys.exit(1)
-        checklist_files = sorted((fdir / "05-测试验证").glob("HTTP验收清单-*.md"))
-        if not checklist_files:
-            print(red("❌ 缺少 HTTP 验收清单: 05-测试验证/HTTP验收清单-YYYYMMDD.md"))
-            sys.exit(1)
-        records = sorted((fdir / "05-测试验证").glob("HTTP验收记录-*.md"))
-        if not records:
-            print(red("❌ 缺少 HTTP 验收记录: 05-测试验证/HTTP验收记录-YYYYMMDD.md"))
-            sys.exit(1)
-        latest = records[-1].read_text(encoding="utf-8")
-        if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
-            print(red(f"❌ HTTP 验收记录未明确 passed: true/通过: {records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-    elif key == "docs-only-http-acceptance-not-required":
-        if not state.get("checklist", {}).get("artifact_package_done"):
-            print(red("❌ docs-only HTTP 验收前必须先完成 artifact_package_done。"))
-            sys.exit(1)
-        checklist_files = sorted((fdir / "05-测试验证").glob("HTTP验收清单-*.md"))
-        if not checklist_files:
-            print(red("❌ docs-only HTTP 验收必须有验收清单: 05-测试验证/HTTP验收清单-YYYYMMDD.md"))
-            sys.exit(1)
-        records = sorted((fdir / "05-测试验证").glob("HTTP验收记录-*.md"))
-        if not records:
-            print(red("❌ docs-only HTTP 验收必须有验收记录: 05-测试验证/HTTP验收记录-YYYYMMDD.md"))
-            sys.exit(1)
-        latest = records[-1].read_text(encoding="utf-8")
-        if not re.search(r"not_applicable\s*[:：]\s*true|不适用|docs-only", latest, flags=re.I):
-            print(red(f"❌ docs-only HTTP 验收记录必须说明 HTTP 不适用: {records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-        if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
-            print(red(f"❌ docs-only HTTP 验收记录未明确 passed: true/通过: {records[-1].relative_to(fdir)}"))
-            sys.exit(1)
-    elif key == "rdtv-mapping-complete":
-        if not state.get("checklist", {}).get("cross_validate_done"):
-            print(red("❌ RDTV闭环前必须先完成 cross_validate_done。"))
-            print(yellow("请先完成全链路验证并执行 auto cross-validate-done。"))
-            sys.exit(1)
-    elif key == "cross-validate-done":
-        reports = sorted((fdir / "05-测试验证").glob("全链路验证报告-*.md"))
-        if not reports:
-            print(red("❌ 缺少全链路验证报告: 05-测试验证/全链路验证报告-YYYYMMDD.md"))
-            sys.exit(1)
-        latest = reports[-1].read_text(encoding="utf-8")
-        if not re.search(r"passed\s*[:：]\s*(true|是|通过)", latest, flags=re.I):
-            print(red(f"❌ 全链路验证报告未明确 passed: true/通过: {reports[-1].relative_to(fdir)}"))
-            sys.exit(1)
-    elif key == "worktree-created":
-        candidates = code_worktrees()
-        if not candidates:
-            print(red("❌ 未检测到独立代码 worktree，禁止标记 worktree-created。"))
-            print(yellow("请先按 using-git-worktrees 创建代码 worktree；文档仍写入当前主项目 docs/。"))
-            sys.exit(1)
-    elif key == "docs-only-worktree-not-required":
-        records = sorted((fdir / "04-实现记录").glob("实现记录-*.md"))
-        if not records:
-            print(red("❌ docs-only 放行必须先有实现记录: 04-实现记录/实现记录-YYYYMMDD*.md"))
-            sys.exit(1)
-        latest = "\n".join(path.read_text(encoding="utf-8") for path in records[-3:])
-        if not re.search(r"docs-only|文档|skill|agent|规范", latest, flags=re.I):
-            print(red("❌ docs-only 放行必须在实现记录中说明变更仅涉及文档/规范/Skill/Agent。"))
-            sys.exit(1)
+                _fail_auto_prereq(prereq.get("message", "formal-change 缺少本地 change"), prereq.get("hint"))
+    elif ptype == "formal_change_declares_authoritative_location":
+        latest, content = _latest_content_or_fail(fdir, {
+            "pattern": prereq.get("decision_pattern"),
+            "message": prereq.get("message"),
+            "hint": prereq.get("hint"),
+        })
+        if re.search(r"mode\s*[:：]\s*formal-change", content, flags=re.I):
+            if "authoritative_location" not in content:
+                _fail_auto_prereq(f"{prereq.get('message', 'formal-change 缺少 authoritative_location')}: {latest.relative_to(fdir)}")
+    else:
+        _fail_auto_prereq(f"未知自动门禁前置条件类型: {ptype}")
+
+
+def validate_auto_prereqs(fdir: Path, state: dict, key: str):
+    for prereq in WORKFLOW_DEFINITION.auto_prereqs.get(key, []):
+        _validate_auto_prereq(fdir, state, prereq)
 
 def find_feature_dir(feature_id: str) -> Path:
     if not FEATURES_ROOT.exists():
@@ -1273,30 +1233,8 @@ def workflow_name(state: dict) -> str:
     return state.get("feature_name") or state.get("bug_name") or "UNKNOWN"
 
 
-BUG_STAGE_CANONICAL = {
-    "分析中": "B1-诊断",
-    "B1-诊断": "B1-诊断",
-    "诊断": "B1-诊断",
-    "修复方案": "B2-方案",
-    "B2-方案": "B2-方案",
-    "方案": "B2-方案",
-    "修复中": "B3-修复",
-    "B3-修复": "B3-修复",
-    "修复": "B3-修复",
-    "验证": "B4-验证",
-    "B4-验证": "B4-验证",
-    "验收发布": "B4-验证",
-    "done": "done",
-    "已关闭": "done",
-}
-
-BUG_STAGE_DISPLAY = {
-    "B1-诊断": "分析中",
-    "B2-方案": "修复方案",
-    "B3-修复": "修复中",
-    "B4-验证": "验证",
-    "done": "已关闭",
-}
+BUG_STAGE_CANONICAL = WORKFLOW_DEFINITION.bug_stage_aliases
+BUG_STAGE_DISPLAY = WORKFLOW_DEFINITION.bug_stage_display
 
 
 def canonical_bug_stage(stage: str) -> str:
@@ -1378,6 +1316,8 @@ def normalize_feature_state_inplace(state: dict) -> bool:
     execution_mode = feature_execution_mode(state)
     if state.get("execution_mode") != execution_mode:
         state["execution_mode"] = execution_mode
+        changed = True
+    if ensure_workflow_runtime(state):
         changed = True
     return changed
 
@@ -2266,15 +2206,14 @@ def cmd_subagent_done(fdir: Path, subagent_name: str, result_input: str):
     validate_subagent_result(data)
     validate_subagent_paths(fdir, "output_paths", data.get("output_paths", []), True)
     log = s.setdefault("subagent_log", [])
-    target = None
     dispatch_id = data.get("dispatch_id")
-    for entry in reversed(log):
-        if entry.get("dispatch_id") == dispatch_id and entry.get("status") == "dispatched":
-            target = entry
-            break
+    target = find_open_subagent_dispatch(log, subagent_name, dispatch_id)
     if target is None:
         print(red(f"❌ 找不到未完成的 subagent-start 记录: {subagent_name}"))
-        print(red(f"  dispatch_id: {dispatch_id}"))
+        if dispatch_id:
+            print(red(f"  dispatch_id: {dispatch_id}"))
+        else:
+            print(red("  dispatch_id: 未提供，且没有唯一未完成派遣可自动匹配"))
         print(yellow("未执行 subagent-start 的派遣视为未发生，禁止事后补 subagent-done。"))
         sys.exit(1)
     target.update({
@@ -2334,6 +2273,10 @@ def cmd_auto(fdir: Path, key: str):
         sys.exit(1)
 
     validate_auto_prereqs(fdir, s, key)
+    validator_name = WORKFLOW_DEFINITION.gate_validators.get(key)
+    if validator_name and not workflow_validators.run_validator(validator_name, fdir):
+        print(red(f"❌ 自动门禁校验未通过: {validator_name}"))
+        sys.exit(1)
 
     if key == "worktree-created":
         candidates = code_worktrees()
@@ -2561,9 +2504,18 @@ def main():
         note = sys.argv[4] if len(sys.argv) > 4 else ""
         cmd_approve(fdir, sys.argv[3], note)
     elif cmd == "step-done":
-        if len(sys.argv) < 5:
-            print(red("用法: step-done <FID> <步骤名> <结论>")); sys.exit(1)
-        cmd_step_done(fdir, sys.argv[3], sys.argv[4])
+        if len(sys.argv) == 4:
+            state = load_state(fdir)
+            in_progress = state.get("in_progress_step")
+            if not in_progress or not in_progress.get("step"):
+                print(red("用法: step-done <FID> <步骤名> <结论>"))
+                print(red("当前没有 in_progress_step，无法省略步骤名。"))
+                sys.exit(1)
+            cmd_step_done(fdir, in_progress["step"], sys.argv[3])
+        elif len(sys.argv) >= 5:
+            cmd_step_done(fdir, sys.argv[3], sys.argv[4])
+        else:
+            print(red("用法: step-done <FID> [步骤名] <结论>")); sys.exit(1)
     elif cmd == "subagent-start":
         if len(sys.argv) < 5:
             print(red("用法: subagent-start <FID> <子Agent名> <派遣JSON>")); sys.exit(1)

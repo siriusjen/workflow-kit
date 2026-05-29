@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Shared workflow configuration helpers for workflow scripts."""
 
-import json
+from __future__ import annotations
+
 from pathlib import Path
+
+from workflow_common import WorkflowJsonError, read_json_file
+
+
+class WorkflowConfigError(ValueError):
+    """Raised when project workflow configuration is invalid."""
 
 
 DEFAULT_WORKFLOW_CONFIG = {
@@ -19,22 +26,35 @@ def load_project_config(workflow_dir: Path) -> dict:
     if not config_file.exists():
         return {}
     try:
-        return json.loads(config_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
+        data = read_json_file(config_file)
+    except WorkflowJsonError as exc:
+        raise WorkflowConfigError(str(exc)) from exc
+    if not isinstance(data, dict):
+        raise WorkflowConfigError("project_config.json must be a JSON object")
+    return data
 
 
 def load_workflow_config(workflow_dir: Path) -> dict:
     raw = load_project_config(workflow_dir)
     workflow = raw.get("workflow") if isinstance(raw, dict) else None
     merged = dict(DEFAULT_WORKFLOW_CONFIG)
-    if not isinstance(workflow, dict):
+    if workflow is None:
         return merged
+    if not isinstance(workflow, dict):
+        raise WorkflowConfigError("workflow must be a JSON object")
 
+    errors = []
     for key, default in DEFAULT_WORKFLOW_CONFIG.items():
         value = workflow.get(key)
+        if value is None:
+            continue
         if isinstance(default, bool) and isinstance(value, bool):
             merged[key] = value
         elif isinstance(default, int) and isinstance(value, int) and value >= 0:
             merged[key] = value
+        else:
+            expected = "boolean" if isinstance(default, bool) else "non-negative integer"
+            errors.append(f"workflow.{key} must be a {expected}")
+    if errors:
+        raise WorkflowConfigError("; ".join(errors))
     return merged

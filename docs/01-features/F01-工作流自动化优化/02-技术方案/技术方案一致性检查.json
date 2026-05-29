@@ -1,0 +1,47 @@
+{
+  "feature_id": "F01",
+  "updated_at": "2026-05-29T16:28:00+08:00",
+  "passed": true,
+  "facts": [
+    {
+      "fact_id": "FCT01",
+      "fact_type": "installation",
+      "summary": "当前安装文档引用不存在的 开发AGENTS.md 和 开发CLAUDE.md，必须改为可迁移的受管块合并注入。",
+      "status": "preserved",
+      "tech_plan_reference": "D01",
+      "requires_code_evidence": false
+    },
+    {
+      "fact_id": "FCT02",
+      "fact_type": "workflow_invariant",
+      "summary": "落地不得改变 S1-S10 阶段数量、门禁顺序和既有 state.json 语义。",
+      "status": "preserved",
+      "tech_plan_reference": "D02-D08",
+      "requires_code_evidence": false
+    },
+    {
+      "fact_id": "FCT03",
+      "fact_type": "implementation_safety",
+      "summary": "涉及 docs/.workflow/scripts 的改动属于代码改动，必须在独立 git worktree 中执行。",
+      "status": "preserved",
+      "tech_plan_reference": "实施顺序与风险控制",
+      "requires_code_evidence": false
+    },
+    {
+      "fact_id": "FCT04",
+      "fact_type": "validation",
+      "summary": "脚本重构前必须补行为回归测试，后续重构必须保持测试全绿。",
+      "status": "preserved",
+      "tech_plan_reference": "D02",
+      "requires_code_evidence": false
+    },
+    {
+      "fact_id": "FCT05",
+      "fact_type": "compatibility",
+      "summary": "新增配置、声明式定义和 state 字段必须向后兼容现有 feature/bugfix 记录。",
+      "status": "preserved",
+      "tech_plan_reference": "D03, D05, D07",
+      "requires_code_evidence": false
+    }
+  ]
+}

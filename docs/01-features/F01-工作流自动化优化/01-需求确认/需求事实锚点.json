@@ -1,0 +1,46 @@
+{
+  "feature_id": "F01",
+  "updated_at": "2026-05-29T16:20:00+08:00",
+  "facts": [
+    {
+      "id": "FCT01",
+      "fact_type": "installation",
+      "summary": "当前安装文档引用不存在的 开发AGENTS.md 和 开发CLAUDE.md，必须改为可迁移的受管块合并注入。",
+      "source": "00-需求输入/01-原始方案-工作流自动化优化20260529.md",
+      "r_refs": ["R01", "R02"],
+      "must_preserve": true
+    },
+    {
+      "id": "FCT02",
+      "fact_type": "workflow_invariant",
+      "summary": "落地不得改变 S1-S10 阶段数量、门禁顺序和既有 state.json 语义。",
+      "source": "00-需求输入/01-原始方案-工作流自动化优化20260529.md",
+      "r_refs": ["R03", "R04", "R05", "R06", "R07"],
+      "must_preserve": true
+    },
+    {
+      "id": "FCT03",
+      "fact_type": "implementation_safety",
+      "summary": "涉及 docs/.workflow/scripts 的改动属于代码改动，必须在独立 git worktree 中执行。",
+      "source": "01-需求确认/OpenSpec决策记录-20260529.md",
+      "r_refs": ["R03"],
+      "must_preserve": true
+    },
+    {
+      "id": "FCT04",
+      "fact_type": "validation",
+      "summary": "脚本重构前必须补行为回归测试，后续重构必须保持测试全绿。",
+      "source": "00-需求输入/01-原始方案-工作流自动化优化20260529.md",
+      "r_refs": ["R03"],
+      "must_preserve": true
+    },
+    {
+      "id": "FCT05",
+      "fact_type": "compatibility",
+      "summary": "新增配置、声明式定义和 state 字段必须向后兼容现有 feature/bugfix 记录。",
+      "source": "01-需求确认/需求说明书-v1.md",
+      "r_refs": ["R04", "R07", "R09"],
+      "must_preserve": true
+    }
+  ]
+}

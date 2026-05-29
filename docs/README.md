@@ -2,6 +2,8 @@
 
 > Obsidian vault 指向项目根目录后，此文件是整个 docs 的统一索引入口。
 > 由大模型和人工共同维护，每次新增重要文档时更新。
+>
+> `workflow-kit` 语言无关。Java/Maven/Jar 只是默认构建验收 profile；前端、Go、Python 等项目安装后通过 `docs/.workflow/project_config.json` 覆盖构建产物和命令。
 
 ---
 
@@ -21,6 +23,7 @@
 | 查看全部 bug 状态 | `python3 docs/.workflow/scripts/init_bugfix.py --list-all` |
 | 生成阶段上下文包 | `python3 docs/.workflow/scripts/context_packets.py build Fxx S6 --task T01` |
 | 记录 OpenSpec 决策 | 写入 `01-需求确认/OpenSpec决策记录-YYYYMMDD.md` 后执行 `stage_gates.py auto Fxx openspec-decision-recorded` |
+| 覆盖构建 profile | 修改 `docs/.workflow/project_config.json` 的 `build` 段 |
 
 ---
 
@@ -66,10 +69,51 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [[.workflow/工作流规范]] | 完整开发流程规范 v2.0 |
-| [[.workflow/Java开发规范]] | Java 编码规范 v3.0，含 AI 编码四原则 |
+| [[.workflow/Java开发规范]] | Java 项目覆盖层规范；非 Java 项目可替换为对应语言规范 |
 | [[.workflow/Obsidian文档规范]] | 文档命名、结构、标签规范 |
 | [[.workflow/bug修复规范]] | Bug 处理 10 步全流程规范 |
 | [[.workflow/知识库规范]] | 知识库目录结构和维护规范 |
+
+## 构建 profile 示例
+
+默认 Java profile:
+
+```json
+{
+  "build": {
+    "artifact_pattern": "target/*.jar",
+    "artifact_label": "Jar",
+    "build_command": "mvn -DskipTests package",
+    "build_record_keyword": "Jar"
+  }
+}
+```
+
+前端示例:
+
+```json
+{
+  "build": {
+    "artifact_pattern": "dist/**/*",
+    "artifact_label": "frontend dist",
+    "build_command": "npm run build",
+    "build_record_keyword": "dist"
+  }
+}
+```
+
+Go 示例:
+
+```json
+{
+  "build": {
+    "artifact_pattern": "bin/*",
+    "artifact_label": "Go binary",
+    "build_command": "go build -o bin/app ./...",
+    "build_record_keyword": "bin/"
+  }
+}
+```
 
 ## 上下文加载原则
 
@@ -82,4 +126,4 @@ docs/
 
 ---
 
-*最后更新: 2026-05-19*
+*最后更新: 2026-05-29*

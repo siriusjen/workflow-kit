@@ -23,19 +23,26 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+from workflow_def import load_workflow_definition
+
 
 SCRIPT_FILE = Path(__file__).resolve()
 SCRIPTS_DIR = SCRIPT_FILE.parent
 WORKFLOW_DIR = SCRIPTS_DIR.parent
 DOCS_DIR = WORKFLOW_DIR.parent
 PROJECT_ROOT = DOCS_DIR.parent
+TEMPLATES_DIR = WORKFLOW_DIR / "templates"
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
 BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
 MAX_SNAPSHOTS = 10
 
+WORKFLOW_DEFINITION = load_workflow_definition(WORKFLOW_DIR)
 
-STAGE_DEFS = {
+STAGE_DEFS = WORKFLOW_DEFINITION.context_stage_defs
+LEGACY_STAGE_DEFS = {
     "S2": {
         "name": "需求确认",
         "packet": "上下文包-S2-需求确认.md",
@@ -338,64 +345,9 @@ BUG_ALIASES = {
     "验收": "B4",
 }
 
-BUG_STAGE_DISPLAY = {
-    "B1-诊断": "分析中",
-    "B2-方案": "修复方案",
-    "B3-修复": "修复中",
-    "B4-验证": "验证",
-    "done": "已关闭",
-}
-
-FEATURE_STAGE_CANONICAL = {
-    "init": "init",
-    "S1": "S1-需求输入",
-    "S1-需求输入": "S1-需求输入",
-    "需求输入": "S1-需求输入",
-    "S2": "S2-需求确认",
-    "S2-需求确认": "S2-需求确认",
-    "需求确认": "S2-需求确认",
-    "S3": "S3-技术方案",
-    "S3-技术方案": "S3-技术方案",
-    "技术方案": "S3-技术方案",
-    "S4": "S4-落地计划",
-    "S4-落地计划": "S4-落地计划",
-    "落地计划": "S4-落地计划",
-    "S5": "S5-任务拆分",
-    "S5-任务拆分": "S5-任务拆分",
-    "任务拆分": "S5-任务拆分",
-    "S6": "S6-实现",
-    "S6-实现": "S6-实现",
-    "实现": "S6-实现",
-    "S7": "S7-测试验证",
-    "S7-测试验证": "S7-测试验证",
-    "测试验证": "S7-测试验证",
-    "S8": "S8-构建验收",
-    "S8-构建验收": "S8-构建验收",
-    "构建验收": "S8-构建验收",
-    "S9": "S9-交叉验证",
-    "S9-交叉验证": "S9-交叉验证",
-    "交叉验证": "S9-交叉验证",
-    "S10": "S10-验收发布",
-    "S10-验收发布": "S10-验收发布",
-    "验收发布": "S10-验收发布",
-    "done": "done",
-    "已完成": "done",
-}
-
-FEATURE_STAGE_DISPLAY = {
-    "init": "init",
-    "S1-需求输入": "需求输入",
-    "S2-需求确认": "需求确认",
-    "S3-技术方案": "技术方案",
-    "S4-落地计划": "落地计划",
-    "S5-任务拆分": "任务拆分",
-    "S6-实现": "实现",
-    "S7-测试验证": "测试验证",
-    "S8-构建验收": "构建验收",
-    "S9-交叉验证": "交叉验证",
-    "S10-验收发布": "验收发布",
-    "done": "已完成",
-}
+BUG_STAGE_DISPLAY = WORKFLOW_DEFINITION.bug_stage_display
+FEATURE_STAGE_CANONICAL = WORKFLOW_DEFINITION.feature_stage_aliases
+FEATURE_STAGE_DISPLAY = WORKFLOW_DEFINITION.feature_stage_display
 
 
 def canonical_bug_stage(stage: str) -> str:
@@ -569,10 +521,15 @@ def relative_paths(paths, fdir: Path):
 
 def expand_must_read_items(fdir: Path, items: list[str], task_data: dict | None):
     expanded = []
+    pending = []
     for item in items:
         if item == "当前 T scope 中列出的代码文件":
             scope = (task_data or {}).get("scope", [])
-            expanded.extend(scope or ["当前 T scope 未定义（阻塞）"])
+            if scope:
+                expanded.extend(scope)
+                pending.extend(scope)
+            else:
+                pending.append("当前 T scope 未定义（阻塞）")
             continue
 
         raw = item
@@ -599,7 +556,7 @@ def expand_must_read_items(fdir: Path, items: list[str], task_data: dict | None)
                 for path in relative_paths(matches, fdir)
             )
         else:
-            expanded.append(f"{item}（待生成或待定位）")
+            pending.append(item)
 
     seen = set()
     deduped = []
@@ -608,7 +565,31 @@ def expand_must_read_items(fdir: Path, items: list[str], task_data: dict | None)
             continue
         seen.add(item)
         deduped.append(item)
-    return deduped
+    pending_deduped = []
+    for item in pending:
+        if item in pending_deduped:
+            continue
+        pending_deduped.append(item)
+    return {"items": deduped, "pending": pending_deduped}
+
+
+def bullet_list(items: list[str], code: bool = False) -> str:
+    if not items:
+        return "- 无"
+    if code:
+        return "\n".join(f"- `{item}`" for item in items)
+    return "\n".join(f"- {item}" for item in items)
+
+
+def load_template(name: str) -> str:
+    return (TEMPLATES_DIR / name).read_text(encoding="utf-8")
+
+
+def render_template(name: str, values: dict[str, str]) -> str:
+    content = load_template(name)
+    for key, value in values.items():
+        content = content.replace("{{" + key + "}}", value)
+    return content
 
 
 def key_state_summary(state: dict):
@@ -702,61 +683,18 @@ def build_packet(fid: str, stage: str, task: str | None = None):
     packet_path = fdir / "06-上下文包" / stage_def["packet"]
     task_data = task_slice(fdir, task)
     rdtv_rows = rdtv_slice(fdir, task)
+    must_read = expand_must_read_items(fdir, stage_def["must_read"], task_data)
 
     generated_at = now_iso()
-    content = f"""# {state.get('feature_id', fid)}-{state.get('feature_name', '')} {stage_def['name']}上下文包
-
-> **生成时间**: {generated_at}
-> **阶段**: {stage_key} / {stage_def['name']}
-> **任务**: {task or '无'}
-> **规则**: 本文件是子Agent默认入口。先读本包，再按“必须读取清单”读取精确路径；禁止一次性加载无关全文。
-
----
-
-#context-packet
-#feature/{state.get('feature_id', fid)}
-#stage/{stage_def['name']}
-
-## 1. 加载策略
-
-1. 先读本上下文包。
-2. 只读取“必须读取清单”中的路径。
-3. 需要额外文件时，先用 `rg` 定位，再读取最小片段，并在返回摘要中说明原因。
-4. 禁止加载完整代码库、完整历史会话、完整测试日志。
-5. 子Agent 返回主Agent 时只返回结构化摘要、输出路径、关键结论和阻塞项。
-
-## 2. 状态摘要
-
-```json
-{render_json_block(key_state_summary(state))}
-```
-
-## 3. 必须读取清单（精确路径）
-"""
-    for item in expand_must_read_items(fdir, stage_def["must_read"], task_data):
-        content += f"\n- `{item}`"
-
-    content += "\n\n## 4. 按需加载清单\n"
-    for item in stage_def["on_demand"]:
-        content += f"\n- {item}"
-
-    content += "\n\n## 5. 预期输出\n"
-    for item in stage_def["outputs"]:
-        content += f"\n- `{item}`"
-
-    content += "\n\n## 6. 当前任务片段\n\n"
     if task:
-        content += "```json\n"
-        content += render_json_block(task_data or {"warning": f"任务 {task} 未在任务清单中找到"})
-        content += "\n```\n"
+        task_section = (
+            "```json\n"
+            f"{render_json_block(task_data or {'warning': f'任务 {task} 未在任务清单中找到'})}\n"
+            "```"
+        )
     else:
-        content += "无指定 T 编号。\n"
+        task_section = "无指定 T 编号。"
 
-    content += "\n## 7. RDTV相关片段\n\n```json\n"
-    content += render_json_block(rdtv_rows)
-    content += "\n```\n"
-
-    content += "\n## 8. 最近产物索引\n\n"
     indexes = {
         "需求确认": latest_files(fdir, "01-需求确认/*", 8),
         "技术方案": latest_files(fdir, "02-技术方案/*", 8),
@@ -764,14 +702,22 @@ def build_packet(fid: str, stage: str, task: str | None = None):
         "实现记录": latest_files(fdir, "04-实现记录/*", 8),
         "测试验证": latest_files(fdir, "05-测试验证/*", 8),
     }
-    content += "```json\n"
-    content += render_json_block(indexes)
-    content += "\n```\n"
-
-    content += "\n## 9. 禁止事项\n\n"
-    content += "- 不要把本包当成完整事实来源；事实以列出的基线文档和代码文件为准。\n"
-    content += "- 不要读取未列入清单的整目录；确需读取时必须先说明原因。\n"
-    content += "- 不要把推测写入实现记录或测试记录；必须写可验证证据。\n"
+    content = render_template("上下文包.md.tpl", {
+        "title": f"{state.get('feature_id', fid)}-{state.get('feature_name', '')} {stage_def['name']}上下文包",
+        "generated_at": generated_at,
+        "stage_key": stage_key,
+        "stage_name": stage_def["name"],
+        "task_label": task or "无",
+        "workflow_id": state.get("feature_id", fid),
+        "state_summary": render_json_block(key_state_summary(state)),
+        "must_read": bullet_list(must_read["items"], code=True),
+        "pending_must_read": bullet_list(must_read["pending"], code=True),
+        "on_demand": bullet_list(stage_def["on_demand"]),
+        "outputs": bullet_list(stage_def["outputs"], code=True),
+        "task_section": task_section,
+        "rdtv_rows": render_json_block(rdtv_rows),
+        "indexes": render_json_block(indexes),
+    })
 
     atomic_write(packet_path, content)
 
@@ -811,59 +757,25 @@ def build_bug_packet(bug_id: str, stage: str):
     packet_path = packet_dir / stage_def["packet"]
 
     generated_at = now_iso()
-    content = f"""# {state.get('bug_id', bug_id)}-{state.get('bug_name', '')} {stage_def['name']}上下文包
-
-> **生成时间**: {generated_at}
-> **阶段**: {stage_key} / {stage_def['name']}
-> **规则**: 本文件是 bug 子Agent 和主Agent 的最小入口。先读本包，再按“必须读取清单”读取精确路径；禁止一次性加载无关全文。
-
----
-
-#context-packet
-#bugfix/{state.get('bug_id', bug_id)}
-#stage/{stage_def['name']}
-
-## 1. 加载策略
-
-1. 先读本上下文包。
-2. 只读取“必须读取清单”中的路径。
-3. 需要额外文件时，先用 `rg` 定位，再读取最小片段，并在返回摘要中说明原因。
-4. 禁止加载完整代码库、完整历史会话、完整测试日志。
-5. 子Agent 返回主Agent 时只返回结构化摘要、输出路径、关键结论和阻塞项。
-
-## 2. 状态摘要
-
-```json
-{render_json_block(key_bug_state_summary(state))}
-```
-
-## 3. 必须读取清单（精确路径）
-"""
-    for item in expand_must_read_items(bdir, stage_def["must_read"], None):
-        content += f"\n- `{item}`"
-
-    content += "\n\n## 4. 按需加载清单\n"
-    for item in stage_def["on_demand"]:
-        content += f"\n- {item}"
-
-    content += "\n\n## 5. 预期输出\n"
-    for item in stage_def["outputs"]:
-        content += f"\n- `{item}`"
-
-    content += "\n\n## 6. 最近产物索引\n\n"
+    must_read = expand_must_read_items(bdir, stage_def["must_read"], None)
     indexes = {
         "bug文档": latest_files(bdir, "*.md", 12),
         "机器状态": latest_files(bdir, "*.json", 12),
         "上下文包": latest_files(bdir, "06-上下文包/*", 8),
     }
-    content += "```json\n"
-    content += render_json_block(indexes)
-    content += "\n```\n"
-
-    content += "\n## 7. 禁止事项\n\n"
-    content += "- 不要把本包当成完整事实来源；事实以列出的根因、方案、任务和执行记录为准。\n"
-    content += "- 不要跳过 `state.json` 的 allowed_next_actions。\n"
-    content += "- 不要把推测写入测试记录或验收发布；必须写可验证证据。\n"
+    content = render_template("bug上下文包.md.tpl", {
+        "title": f"{state.get('bug_id', bug_id)}-{state.get('bug_name', '')} {stage_def['name']}上下文包",
+        "generated_at": generated_at,
+        "stage_key": stage_key,
+        "stage_name": stage_def["name"],
+        "workflow_id": state.get("bug_id", bug_id),
+        "state_summary": render_json_block(key_bug_state_summary(state)),
+        "must_read": bullet_list(must_read["items"], code=True),
+        "pending_must_read": bullet_list(must_read["pending"], code=True),
+        "on_demand": bullet_list(stage_def["on_demand"]),
+        "outputs": bullet_list(stage_def["outputs"], code=True),
+        "indexes": render_json_block(indexes),
+    })
 
     atomic_write(packet_path, content)
 

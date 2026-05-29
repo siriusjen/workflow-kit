@@ -1,0 +1,13 @@
+{
+  "feature_id": "F01",
+  "checked_at": "2026-05-29T16:20:00+08:00",
+  "source": "00-需求输入/01-原始方案-工作流自动化优化20260529.md",
+  "target": "01-需求确认/需求说明书-v1.md",
+  "passed": true,
+  "main_agent_accepted_low_severity": true,
+  "discrepancies": [],
+  "notes": [
+    "原始方案中的 A-I 项均已结构化为 R01-R11。",
+    "评审发现的安装脚本来源、安装命令顺序、测试路径和 A 项 worktree 纪律已补入需求基线。"
+  ]
+}

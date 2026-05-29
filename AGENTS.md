@@ -17,6 +17,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
+<!-- WORKFLOW-KIT:START -->
 # 开发工作流入口（Codex / AGENTS.md）
 
 > Codex 启动时自动加载此文件。自动化开发工作流规范本体在 `docs/.workflow/工作流规范.md`。
@@ -87,12 +88,14 @@ python3 docs/.workflow/scripts/stage_gates.py step-start <FID> "步骤名" '{"go
 # 记录进行中进展（当前步骤未完成，但一个可检查小动作已完成时调用）
 python3 docs/.workflow/scripts/stage_gates.py progress <FID> '{"completed_action":"...","key_conclusions":["..."],"outputs":["..."],"verification":["..."],"next_step":"..."}'
 
-# 记录步骤完成
+# 记录步骤完成；若当前存在唯一 in_progress_step，可省略“步骤名”
 python3 docs/.workflow/scripts/stage_gates.py step-done <FID> "步骤名" '{"outputs":["..."],"key_conclusions":["..."],"next_step":"..."}'
+python3 docs/.workflow/scripts/stage_gates.py step-done <FID> '{"outputs":["..."],"key_conclusions":["..."],"next_step":"..."}'
 
-# 记录子Agent派遣和返回（真实派遣或并行派遣都必须记录）
+# 记录子Agent派遣和返回（真实派遣或并行派遣都必须记录；只有单个未完成同名派遣时 subagent-done 可省 dispatch_id）
 python3 docs/.workflow/scripts/stage_gates.py subagent-start <FID> "任务实现" '{"context_packet":"06-上下文包/上下文包-S6-实现.md","input_paths":["03-落地计划/任务清单.json"],"output_paths":["04-实现记录/实现记录-YYYYMMDD-T01.md"],"instruction":"实现 T01"}'
 python3 docs/.workflow/scripts/stage_gates.py subagent-done <FID> "任务实现" '{"dispatch_id":"d-YYYYMMDDHHMMSS-xxxxxxxx","status":"done","summary":"...","output_paths":["..."],"key_conclusions":["..."]}'
+python3 docs/.workflow/scripts/stage_gates.py subagent-done <FID> "任务实现" '{"status":"done","summary":"...","output_paths":["..."],"key_conclusions":["..."]}'
 
 # OpenSpec 决策、事实继承、一致性校验、构建产物和 HTTP 验收门禁
 python3 docs/.workflow/scripts/stage_gates.py auto <FID> openspec-decision-recorded
@@ -169,9 +172,9 @@ Skill 定义文件: `docs/.workflow/skills/bugfix/bug-b{n}-*/SKILL.md`
 
 - `step-start` 缺少非空 `goal`、`expected_outputs`、`done_definition`、`next_step` 时，脚本必须失败。
 - `progress` 必须记录非空 `completed_action`、`key_conclusions`、`next_step`，且 `outputs` 与 `verification` 不能同时为空。
-- `step-done` 必须有对应未闭合的 `step-start`，并提供非空 `key_conclusions` 与 `next_step`。
+- `step-done` 必须有对应未闭合的 `step-start`，并提供非空 `key_conclusions` 与 `next_step`；若当前只有一个 `in_progress_step`，CLI 可省略步骤名。
 - 未生成当前阶段上下文包，不得派遣子 Agent。
-- `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-start` 会输出 `dispatch_id`，并行或同名子 Agent 返回时 `subagent-done` 必须携带该值；`output_paths` 必须存在。
+- `subagent-start` 必须提供非空 `context_packet/input_paths/output_paths/instruction`，且 `input_paths` 必须存在；`subagent-start` 会输出 `dispatch_id`，并行或同名子 Agent 返回时 `subagent-done` 必须携带该值；只有单个未完成同名派遣时可省略 `dispatch_id`；`output_paths` 必须存在。
 - 子 Agent 定义文件 frontmatter 声明 `prerequisites` 时，`subagent-start` 必须先校验其中的 `path` 或 `glob` 是否存在。
 - 当前步骤最近一次子Agent结果若为 `dispatched`、`failed`、`partial` 或 `blocked`，禁止把步骤标记为 `done`，也禁止执行 `auto` 或普通人工锚点；必须先重派获得 `done`，或把当前步骤记录为失败/阻塞后触发修正流程；`approve-correction` 不受该阻断限制。
 - 每个 `implement-Txx` 完成前必须增量更新 `04-实现记录/*.md`，并在 `step-done` 的 `outputs` 中列出该实现记录。
@@ -188,6 +191,9 @@ Skill 定义文件: `docs/.workflow/skills/bugfix/bug-b{n}-*/SKILL.md`
 - 未打包构建产物、未完成人工本地部署后的 HTTP API 验收就关闭需求
 - 未读规范就开始实现
 - 在未确认需求基线前写代码或拆任务
+
+> 保留此受管块，`python3 docs/.workflow/scripts/install_entry.py` 会据此刷新工作流入口内容。
+<!-- WORKFLOW-KIT:END -->
 
 ## 项目覆盖层
 

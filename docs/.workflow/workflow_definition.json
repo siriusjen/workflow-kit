@@ -1,0 +1,298 @@
+{
+  "version": "1.0",
+  "feature_stages": [
+    {"canonical": "init", "display": "init", "order": 0, "aliases": ["init"]},
+    {"canonical": "S1-需求输入", "display": "需求输入", "order": 1, "aliases": ["S1", "S1-需求输入", "需求输入"]},
+    {"canonical": "S2-需求确认", "display": "需求确认", "order": 2, "aliases": ["S2", "S2-需求确认", "需求确认"]},
+    {"canonical": "S3-技术方案", "display": "技术方案", "order": 3, "aliases": ["S3", "S3-技术方案", "技术方案"]},
+    {"canonical": "S4-落地计划", "display": "落地计划", "order": 4, "aliases": ["S4", "S4-落地计划", "落地计划"]},
+    {"canonical": "S5-任务拆分", "display": "任务拆分", "order": 5, "aliases": ["S5", "S5-任务拆分", "任务拆分"]},
+    {"canonical": "S6-实现", "display": "实现", "order": 6, "aliases": ["S6", "S6-实现", "实现"]},
+    {"canonical": "S7-测试验证", "display": "测试验证", "order": 7, "aliases": ["S7", "S7-测试验证", "测试验证"]},
+    {"canonical": "S8-构建验收", "display": "构建验收", "order": 8, "aliases": ["S8", "S8-构建验收", "构建验收"]},
+    {"canonical": "S9-交叉验证", "display": "交叉验证", "order": 9, "aliases": ["S9", "S9-交叉验证", "交叉验证"]},
+    {"canonical": "S10-验收发布", "display": "验收发布", "order": 10, "aliases": ["S10", "S10-验收发布", "验收发布"]},
+    {"canonical": "done", "display": "已完成", "order": 99, "aliases": ["done", "已完成"]}
+  ],
+  "bug_stages": [
+    {"canonical": "B1-诊断", "display": "分析中", "order": 1, "aliases": ["分析中", "B1-诊断", "诊断"]},
+    {"canonical": "B2-方案", "display": "修复方案", "order": 2, "aliases": ["修复方案", "B2-方案", "方案"]},
+    {"canonical": "B3-修复", "display": "修复中", "order": 3, "aliases": ["修复中", "B3-修复", "修复"]},
+    {"canonical": "B4-验证", "display": "验证", "order": 4, "aliases": ["验证", "B4-验证", "验收发布"]},
+    {"canonical": "done", "display": "已关闭", "order": 99, "aliases": ["done", "已关闭"]}
+  ],
+  "subagents": [
+    {"name": "需求交叉验证", "stages": ["S2-需求确认"]},
+    {"name": "技术方案设计", "stages": ["S3-技术方案"]},
+    {"name": "落地计划", "stages": ["S4-落地计划"]},
+    {"name": "任务拆分", "stages": ["S5-任务拆分"]},
+    {"name": "任务实现", "stages": ["S6-实现"]},
+    {"name": "规格符合性复核", "stages": ["S6-实现"]},
+    {"name": "代码质量复核", "stages": ["S6-实现"]},
+    {"name": "测试验证", "stages": ["S7-测试验证"]},
+    {"name": "HTTP接口验收", "stages": ["S8-构建验收"]},
+    {"name": "全链路验证", "stages": ["S9-交叉验证"]},
+    {"name": "Bug根因分析", "stages": ["B1-诊断", "B2-方案"]},
+    {"name": "Bug修复实现", "stages": ["B3-修复"]},
+    {"name": "Bug回归验证", "stages": ["B4-验证"]},
+    {"name": "Bug独立复核", "stages": ["B1-诊断", "B2-方案", "B3-修复", "B4-验证"]}
+  ],
+  "gate_validators": {
+    "req-coverage-passed": "req_coverage",
+    "req-cross-validated": "req_cross_validate",
+    "fact-inheritance-passed": "fact_inheritance",
+    "rdt-mapping-passed": "rdt_mapping",
+    "rdtv-mapping-complete": "rdtv_closure"
+  },
+  "auto_prereqs": {
+    "openspec-decision-recorded": [
+      {
+        "type": "latest_glob",
+        "pattern": "01-需求确认/OpenSpec决策记录-*.md",
+        "message": "缺少 OpenSpec 决策记录: 01-需求确认/OpenSpec决策记录-YYYYMMDD.md",
+        "hint": "请记录本需求使用 OpenSpec 的模式：structure-only 或 formal-change。"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "01-需求确认/OpenSpec决策记录-*.md",
+        "regex": "(structure-only|formal-change)",
+        "message": "OpenSpec 决策记录未明确 mode"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "01-需求确认/OpenSpec决策记录-*.md",
+        "regex": "decision",
+        "flags": "i",
+        "message": "OpenSpec 决策记录未明确 decision 字段"
+      },
+      {
+        "type": "formal_change_has_local_change",
+        "decision_pattern": "01-需求确认/OpenSpec决策记录-*.md",
+        "changes_glob": "openspec/changes/*",
+        "message": "formal-change 必须在当前 feature 的 openspec/changes/<change-id>/ 下创建权威文档。"
+      },
+      {
+        "type": "formal_change_declares_authoritative_location",
+        "decision_pattern": "01-需求确认/OpenSpec决策记录-*.md",
+        "message": "formal-change 决策记录未声明 authoritative_location"
+      }
+    ],
+    "rd-mapping-complete": [
+      {
+        "type": "checklist_true",
+        "key": "fact_inheritance_check",
+        "message": "技术方案进入落地计划前必须先通过需求事实继承一致性校验。",
+        "hint": "请先执行: python3 docs/.workflow/scripts/validators.py fact_inheritance <FID>"
+      }
+    ],
+    "artifact-package-done": [
+      {
+        "type": "latest_glob",
+        "pattern": "05-测试验证/构建记录-*.md",
+        "message": "缺少构建记录: 05-测试验证/构建记录-YYYYMMDD.md"
+      },
+      {
+        "type": "artifact_exists",
+        "message": "未找到 {artifact_label} 产物: {artifact_pattern}",
+        "hint": "请先执行 {build_command} 或等效打包命令。"
+      },
+      {
+        "type": "build_record_mentions_artifact",
+        "pattern": "05-测试验证/构建记录-*.md",
+        "message": "构建记录未明确 {artifact_label} 路径"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/构建记录-*.md",
+        "regex": "passed\\s*[:：]\\s*(true|是|通过)|构建.*(成功|通过)",
+        "flags": "i",
+        "message": "构建记录未明确构建通过"
+      }
+    ],
+    "docs-only-artifact-not-required": [
+      {
+        "type": "latest_glob",
+        "pattern": "05-测试验证/构建记录-*.md",
+        "message": "docs-only 构建验收必须有构建记录: 05-测试验证/构建记录-YYYYMMDD.md"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/构建记录-*.md",
+        "regex": "not_applicable\\s*[:：]\\s*true|不适用|docs-only",
+        "flags": "i",
+        "message": "docs-only 构建记录必须说明构建产物不适用"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/构建记录-*.md",
+        "regex": "passed\\s*[:：]\\s*(true|是|通过)",
+        "flags": "i",
+        "message": "docs-only 构建记录未明确 passed: true/通过"
+      }
+    ],
+    "http-acceptance-done": [
+      {
+        "type": "checklist_true",
+        "key": "artifact_package_done",
+        "message": "HTTP验收前必须先完成 artifact_package_done。"
+      },
+      {
+        "type": "glob_exists",
+        "pattern": "05-测试验证/HTTP验收清单-*.md",
+        "message": "缺少 HTTP 验收清单: 05-测试验证/HTTP验收清单-YYYYMMDD.md"
+      },
+      {
+        "type": "latest_glob",
+        "pattern": "05-测试验证/HTTP验收记录-*.md",
+        "message": "缺少 HTTP 验收记录: 05-测试验证/HTTP验收记录-YYYYMMDD.md"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/HTTP验收记录-*.md",
+        "regex": "passed\\s*[:：]\\s*(true|是|通过)",
+        "flags": "i",
+        "message": "HTTP 验收记录未明确 passed: true/通过"
+      }
+    ],
+    "docs-only-http-acceptance-not-required": [
+      {
+        "type": "checklist_true",
+        "key": "artifact_package_done",
+        "message": "docs-only HTTP 验收前必须先完成 artifact_package_done。"
+      },
+      {
+        "type": "glob_exists",
+        "pattern": "05-测试验证/HTTP验收清单-*.md",
+        "message": "docs-only HTTP 验收必须有验收清单: 05-测试验证/HTTP验收清单-YYYYMMDD.md"
+      },
+      {
+        "type": "latest_glob",
+        "pattern": "05-测试验证/HTTP验收记录-*.md",
+        "message": "docs-only HTTP 验收必须有验收记录: 05-测试验证/HTTP验收记录-YYYYMMDD.md"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/HTTP验收记录-*.md",
+        "regex": "not_applicable\\s*[:：]\\s*true|不适用|docs-only",
+        "flags": "i",
+        "message": "docs-only HTTP 验收记录必须说明 HTTP 不适用"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/HTTP验收记录-*.md",
+        "regex": "passed\\s*[:：]\\s*(true|是|通过)",
+        "flags": "i",
+        "message": "docs-only HTTP 验收记录未明确 passed: true/通过"
+      }
+    ],
+    "rdtv-mapping-complete": [
+      {
+        "type": "checklist_true",
+        "key": "cross_validate_done",
+        "message": "RDTV闭环前必须先完成 cross_validate_done。",
+        "hint": "请先完成全链路验证并执行 auto cross-validate-done。"
+      }
+    ],
+    "cross-validate-done": [
+      {
+        "type": "latest_glob",
+        "pattern": "05-测试验证/全链路验证报告-*.md",
+        "message": "缺少全链路验证报告: 05-测试验证/全链路验证报告-YYYYMMDD.md"
+      },
+      {
+        "type": "latest_file_matches",
+        "pattern": "05-测试验证/全链路验证报告-*.md",
+        "regex": "passed\\s*[:：]\\s*(true|是|通过)",
+        "flags": "i",
+        "message": "全链路验证报告未明确 passed: true/通过"
+      }
+    ],
+    "worktree-created": [
+      {
+        "type": "code_worktree_exists",
+        "message": "未检测到独立代码 worktree，禁止标记 worktree-created。",
+        "hint": "请先按 using-git-worktrees 创建代码 worktree；文档仍写入当前主项目 docs/。"
+      }
+    ],
+    "docs-only-worktree-not-required": [
+      {
+        "type": "latest_glob",
+        "pattern": "04-实现记录/实现记录-*.md",
+        "message": "docs-only 放行必须先有实现记录: 04-实现记录/实现记录-YYYYMMDD*.md"
+      },
+      {
+        "type": "recent_files_match",
+        "pattern": "04-实现记录/实现记录-*.md",
+        "limit": 3,
+        "regex": "docs-only|文档|skill|agent|规范",
+        "flags": "i",
+        "message": "docs-only 放行必须在实现记录中说明变更仅涉及文档/规范/Skill/Agent。"
+      }
+    ]
+  },
+  "context_stages": {
+    "S2": {
+      "name": "需求确认",
+      "packet": "上下文包-S2-需求确认.md",
+      "must_read": ["state.json", "00-需求输入/", "01-需求确认/需求说明书-v*.md", "01-需求确认/覆盖检查.json"],
+      "on_demand": ["00-需求输入/原始材料：只在差异定位时按条目读取", "历史版本需求说明书：只在需要比对变更时读取"],
+      "outputs": ["01-需求确认/OpenSpec决策记录-YYYYMMDD.md", "01-需求确认/差异报告-YYYYMMDD.json", "01-需求确认/需求事实锚点.json"]
+    },
+    "S3": {
+      "name": "技术方案",
+      "packet": "上下文包-S3-技术方案.md",
+      "must_read": ["state.json", "01-需求确认/需求说明书-v*.md", "01-需求确认/覆盖检查.json", "01-需求确认/OpenSpec决策记录-*.md", "01-需求确认/差异报告-*.json", "01-需求确认/需求事实锚点.json"],
+      "on_demand": ["代码文件：只在方案需要验证既有实现时用 rg 定位后读取", "知识库：只读取与当前 R/D 直接相关的条目"],
+      "outputs": ["02-技术方案/技术方案-v1.md", "02-技术方案/需求方案映射.json", "02-技术方案/代码影响点与依赖逻辑清单.md", "02-技术方案/技术方案一致性检查.json"]
+    },
+    "S4": {
+      "name": "落地计划",
+      "packet": "上下文包-S4-落地计划.md",
+      "must_read": ["state.json", "01-需求确认/需求事实锚点.json", "02-技术方案/技术方案-v*.md", "02-技术方案/需求方案映射.json", "02-技术方案/技术方案一致性检查.json"],
+      "on_demand": ["历史方案：只在计划冲突时读取"],
+      "outputs": ["03-落地计划/落地计划-v1.md"]
+    },
+    "S5": {
+      "name": "任务拆分",
+      "packet": "上下文包-S5-任务拆分.md",
+      "must_read": ["state.json", "01-需求确认/需求说明书-v*.md", "02-技术方案/需求方案映射.json", "03-落地计划/落地计划-v*.md"],
+      "on_demand": ["代码影响点清单：只在任务 scope 不明确时读取"],
+      "outputs": ["03-落地计划/任务清单.json", "03-落地计划/RDTV映射表.json"]
+    },
+    "S6": {
+      "name": "实现",
+      "packet": "上下文包-S6-实现.md",
+      "must_read": ["state.json", "03-落地计划/任务清单.json", "03-落地计划/RDTV映射表.json"],
+      "on_demand": ["任务 scope 对应代码文件：用 rg 精确定位后读取", "相关测试文件：只读取当前 T 影响范围"],
+      "outputs": ["04-实现记录/实现记录-YYYYMMDD-Txx.md"]
+    },
+    "S7": {
+      "name": "测试验证",
+      "packet": "上下文包-S7-测试验证.md",
+      "must_read": ["state.json", "03-落地计划/任务清单.json", "04-实现记录/实现记录-*.md"],
+      "on_demand": ["测试日志：只读取失败片段和最终摘要"],
+      "outputs": ["05-测试验证/测试记录-YYYYMMDD.md"]
+    },
+    "S8": {
+      "name": "构建验收",
+      "packet": "上下文包-S8-构建验收.md",
+      "must_read": ["state.json", "03-落地计划/RDTV映射表.json", "04-实现记录/实现记录-*.md", "05-测试验证/测试记录-*.md"],
+      "on_demand": ["构建日志：只读取失败片段和最终产物路径", "HTTP 响应：只读取验收接口的请求响应摘要"],
+      "outputs": ["05-测试验证/构建记录-YYYYMMDD.md", "05-测试验证/HTTP验收清单-YYYYMMDD.md", "05-测试验证/HTTP验收记录-YYYYMMDD.md"]
+    },
+    "S9": {
+      "name": "交叉验证",
+      "packet": "上下文包-S9-交叉验证.md",
+      "must_read": ["state.json", "01-需求确认/需求事实锚点.json", "02-技术方案/技术方案一致性检查.json", "03-落地计划/RDTV映射表.json", "04-实现记录/实现记录-*.md", "05-测试验证/测试记录-*.md", "05-测试验证/构建记录-*.md", "05-测试验证/HTTP验收记录-*.md"],
+      "on_demand": ["代码 diff：只读取 RDTV 映射指向的文件", "测试日志：只读取失败与最终摘要"],
+      "outputs": ["05-测试验证/全链路验证报告-YYYYMMDD.md", "03-落地计划/RDTV映射表.json"]
+    },
+    "S10": {
+      "name": "验收发布",
+      "packet": "上下文包-S10-验收发布.md",
+      "must_read": ["state.json", "05-测试验证/全链路验证报告-*.md", "03-落地计划/RDTV映射表.json"],
+      "on_demand": ["OpenSpec change：formal-change 时读取 feature-local openspec"],
+      "outputs": ["05-测试验证/发布确认-YYYYMMDD.md"]
+    }
+  }
+}

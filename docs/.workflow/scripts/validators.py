@@ -19,7 +19,6 @@ validators.py — 自动完整性校验器 v2.0
 import json
 import sys
 import re
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -31,6 +30,9 @@ SCRIPTS_DIR   = SCRIPT_FILE.parent
 WORKFLOW_DIR  = SCRIPTS_DIR.parent
 DOCS_DIR      = WORKFLOW_DIR.parent
 PROJECT_ROOT  = DOCS_DIR.parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+from workflow_def import load_workflow_definition
 PRIMARY_FEATURES_ROOT = DOCS_DIR / "01-features"
 LEGACY_FEATURES_ROOT = DOCS_DIR / "features"
 BUGFIX_ROOT = DOCS_DIR / "02-bug-fix"
@@ -90,38 +92,9 @@ def resolve_features_root() -> Path:
 
 
 FEATURES_ROOT = resolve_features_root()
+WORKFLOW_DEFINITION = load_workflow_definition(WORKFLOW_DIR)
 
-FEATURE_STAGE_CANONICAL = {
-    "init": "init",
-    "需求确认": "S2-需求确认",
-    "S2": "S2-需求确认",
-    "S2-需求确认": "S2-需求确认",
-    "技术方案": "S3-技术方案",
-    "S3": "S3-技术方案",
-    "S3-技术方案": "S3-技术方案",
-    "落地计划": "S4-落地计划",
-    "S4": "S4-落地计划",
-    "S4-落地计划": "S4-落地计划",
-    "任务拆分": "S5-任务拆分",
-    "S5": "S5-任务拆分",
-    "S5-任务拆分": "S5-任务拆分",
-    "实现": "S6-实现",
-    "S6": "S6-实现",
-    "S6-实现": "S6-实现",
-    "测试验证": "S7-测试验证",
-    "S7": "S7-测试验证",
-    "S7-测试验证": "S7-测试验证",
-    "构建验收": "S8-构建验收",
-    "S8": "S8-构建验收",
-    "S8-构建验收": "S8-构建验收",
-    "交叉验证": "S9-交叉验证",
-    "S9": "S9-交叉验证",
-    "S9-交叉验证": "S9-交叉验证",
-    "验收发布": "S10-验收发布",
-    "S10": "S10-验收发布",
-    "S10-验收发布": "S10-验收发布",
-    "done": "done",
-}
+FEATURE_STAGE_CANONICAL = WORKFLOW_DEFINITION.feature_stage_aliases
 
 
 def now_iso(): return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
@@ -277,18 +250,6 @@ def append_blocking_subagent_details(state: dict, details: list, action_label: s
     return True
 
 
-def _trigger_auto(fid: str, key: str):
-    """通过 stage_gates auto 触发状态转移"""
-    result = subprocess.run(
-        ["python3", str(SCRIPTS_DIR / "stage_gates.py"), "auto", fid, key],
-        capture_output=True, text=True
-    )
-    if result.returncode == 0:
-        print(cyan(f"  自动转移: {key}"))
-    else:
-        print(yellow(f"  手动执行: python3 docs/.workflow/scripts/stage_gates.py auto {fid} {key}"))
-
-
 # ── 校验器 1: 需求完整性 ─────────────────────────────────────────────────────
 
 def v_req_coverage(fdir: Path) -> bool:
@@ -321,8 +282,6 @@ def v_req_coverage(fdir: Path) -> bool:
         if data.get("passed") is True and not passed:
             print(yellow("  报告声明 passed=true，但覆盖维度或未映射输入仍未闭合；按严格规则判定为未通过"))
         print_result("req_coverage", passed, details, data.get("block_reason"))
-        if passed:
-            _trigger_auto(fdir.name.split("-")[0], "req-coverage-passed")
         return passed
 
     print(yellow("  覆盖检查.json 的 passed 字段为 null"))
@@ -387,8 +346,6 @@ def v_req_cross_validate(fdir: Path) -> bool:
     if anchor_missing:
         print(yellow("  请确认需求交叉验证子Agent已按要求产出此文件"))
 
-    if passed:
-        _trigger_auto(fdir.name.split("-")[0], "req-cross-validated")
     return passed
 
 
@@ -464,8 +421,6 @@ def v_fact_inheritance(fdir: Path) -> bool:
         "需求事实未被技术方案完整继承" if not passed else None
     )
 
-    if passed:
-        _trigger_auto(fdir.name.split("-")[0], "fact-inheritance-passed")
     return passed
 
 
@@ -528,7 +483,6 @@ def v_rdt_mapping(fdir: Path) -> bool:
         rdtv_data["mapping"] = rows
         save_json(rdtv, rdtv_data)
         print(cyan(f"  RDTV映射表 已更新（V列待填）"))
-        _trigger_auto(fdir.name.split("-")[0], "rdt-mapping-passed")
 
     return passed
 
@@ -703,10 +657,27 @@ def v_rdtv_closure(fdir: Path) -> bool:
     if passed:
         print(cyan(f"  追溯表: 05-测试验证/RDTV报告.json"))
         print(cyan(f"  {report['total']} 条链路全部闭合"))
-        if current_stage == "S9-交叉验证":
-            _trigger_auto(fdir.name.split("-")[0], "rdtv-mapping-complete")
 
     return passed
+
+
+VALIDATOR_FUNCTIONS = {
+    "req_coverage": v_req_coverage,
+    "req_cross_validate": v_req_cross_validate,
+    "fact_inheritance": v_fact_inheritance,
+    "rdt_mapping": v_rdt_mapping,
+    "rd_mapping": v_rdt_mapping,
+    "rdtv_closure": v_rdtv_closure,
+}
+
+
+def run_validator(name: str, fdir: Path) -> bool:
+    try:
+        validator = VALIDATOR_FUNCTIONS[name]
+    except KeyError:
+        print(red(f"未知校验器: {name}"))
+        return False
+    return validator(fdir)
 
 
 # ── Bug 校验器: 根因→方案→任务闭环 ───────────────────────────────────────────

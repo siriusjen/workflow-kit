@@ -1,0 +1,17 @@
+{
+  "feature_id": "F01",
+  "updated_at": "2026-05-29T16:28:00+08:00",
+  "mappings": [
+    {"r": "R01", "d": ["D01"], "status": "covered"},
+    {"r": "R02", "d": ["D01"], "status": "covered"},
+    {"r": "R03", "d": ["D02"], "status": "covered"},
+    {"r": "R04", "d": ["D03"], "status": "covered"},
+    {"r": "R05", "d": ["D04"], "status": "covered"},
+    {"r": "R06", "d": ["D05"], "status": "covered"},
+    {"r": "R07", "d": ["D05"], "status": "covered"},
+    {"r": "R08", "d": ["D06"], "status": "covered"},
+    {"r": "R09", "d": ["D07"], "status": "covered"},
+    {"r": "R10", "d": ["D08"], "status": "covered"},
+    {"r": "R11", "d": ["D09"], "status": "covered"}
+  ]
+}

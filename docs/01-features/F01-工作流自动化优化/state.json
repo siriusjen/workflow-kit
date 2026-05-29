@@ -1,0 +1,1306 @@
+{
+  "_comment": "唯一权威状态文件，由脚本和校验器维护",
+  "spec_version": "2.1",
+  "feature_id": "F01",
+  "feature_name": "工作流自动化优化",
+  "change_id": "chg-20260529-001",
+  "input_mode": "doc",
+  "workflow_mode": "standard",
+  "execution_mode": "agentic",
+  "created_at": "2026-05-29T16:08:04",
+  "last_updated": "2026-05-29T18:23:19",
+  "current_stage": "done",
+  "current_step": "completed",
+  "step_index": 1,
+  "step_total": 1,
+  "allowed_next_actions": [],
+  "blocked_actions": [],
+  "human_approval_required": false,
+  "human_approval_pending": false,
+  "human_approvals": [
+    {
+      "anchor": "①",
+      "action": "approve-req-input",
+      "approved_at": "2026-05-29T16:09:53",
+      "note": "用户明确要求将既有改造方案拆成具体方案、任务并开始执行落地；原始方案已归档到 00-需求输入。"
+    },
+    {
+      "anchor": "②",
+      "action": "approve-req-final",
+      "approved_at": "2026-05-29T16:15:22",
+      "note": "需求基线 R01-R11 已通过覆盖检查和主线交叉验证，用户已要求拆成具体方案、任务并开始落地。"
+    },
+    {
+      "anchor": "④",
+      "action": "approve-verify",
+      "approved_at": "2026-05-29T18:18:55",
+      "note": "交叉验证通过，进入发布关闭确认"
+    },
+    {
+      "anchor": "⑤",
+      "action": "approve-release",
+      "approved_at": "2026-05-29T18:23:19",
+      "note": "构建产物与HTTP验收通过，流程完结"
+    }
+  ],
+  "baseline": {
+    "requirement": "01-需求确认/需求说明书-v1.md",
+    "requirement_approved_at": "2026-05-29T16:15:22",
+    "tech_spec": "02-技术方案/技术方案-v1.md",
+    "tech_spec_approved_at": "2026-05-29T16:17:47",
+    "task_split": "03-落地计划/任务清单.json",
+    "task_split_approved_at": "2026-05-29T16:20:32"
+  },
+  "checklist": {
+    "req_input_brainstorm": true,
+    "openspec_decision_recorded": true,
+    "req_coverage_check": true,
+    "req_cross_validate": true,
+    "fact_inheritance_check": true,
+    "rd_mapping_complete": true,
+    "rdt_mapping_complete": true,
+    "worktree_created": true,
+    "all_tasks_done": true,
+    "test_done": true,
+    "artifact_package_done": true,
+    "cross_validate_done": true,
+    "rdtv_mapping_complete": true,
+    "http_acceptance_done": true
+  },
+  "current_step_log": {
+    "completed_steps": [
+      {
+        "step": "approve-req-input",
+        "stage": "init",
+        "completed_at": "2026-05-29T16:09:53",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "用户明确要求将既有改造方案拆成具体方案、任务并开始执行落地；原始方案已归档到 00-需求输入。"
+        ],
+        "next_step": "openspec-structural-analysis",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "openspec-decision-recorded",
+        "stage": "S2-需求确认",
+        "completed_at": "2026-05-29T16:13:10",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：openspec-decision-recorded"
+        ],
+        "next_step": "run-req-coverage-check",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "req-coverage-passed",
+        "stage": "S2-需求确认",
+        "completed_at": "2026-05-29T16:14:04",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：req-coverage-passed"
+        ],
+        "next_step": "dispatch-cross-validate-subagent",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "req-cross-validated",
+        "stage": "S2-需求确认",
+        "completed_at": "2026-05-29T16:14:49",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：req-cross-validated"
+        ],
+        "next_step": "awaiting-approve-req-final",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "approve-req-final",
+        "stage": "S2-需求确认",
+        "completed_at": "2026-05-29T16:15:22",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "需求基线 R01-R11 已通过覆盖检查和主线交叉验证，用户已要求拆成具体方案、任务并开始落地。"
+        ],
+        "next_step": "dispatch-tech-spec-subagent",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "fact-inheritance-passed",
+        "stage": "S3-技术方案",
+        "completed_at": "2026-05-29T16:17:38",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：fact-inheritance-passed"
+        ],
+        "next_step": "run-rd-mapping-check",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "rd-mapping-complete",
+        "stage": "S3-技术方案",
+        "completed_at": "2026-05-29T16:17:47",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：rd-mapping-complete"
+        ],
+        "next_step": "writing-plans",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "writing-plans-mainline",
+        "stage": "S4-落地计划",
+        "completed_at": "2026-05-29T16:20:05",
+        "status": "done",
+        "outputs": [
+          "03-落地计划/落地计划-v1.md",
+          "03-落地计划/任务清单.json",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "key_conclusions": [
+          "任务清单已将 R01-R11 映射到 T01-T10，并按先安装、后测试、再重构的顺序排列",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "plans-complete",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "plans-complete",
+        "stage": "S4-落地计划",
+        "completed_at": "2026-05-29T16:20:05",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：plans-complete"
+        ],
+        "next_step": "task-split",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "rdt-mapping-passed",
+        "stage": "S5-任务拆分",
+        "completed_at": "2026-05-29T16:20:32",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：rdt-mapping-passed"
+        ],
+        "next_step": "worktree-create",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "worktree-created",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T16:21:43",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：worktree-created"
+        ],
+        "next_step": "dispatch-impl-subagent-per-task",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T01",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T16:32:32",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T01.md",
+          "04-实现记录/规格复核记录-20260529-T01.md",
+          "04-实现记录/代码质量复核记录-20260529-T01.md"
+        ],
+        "key_conclusions": [
+          "T01 已完成：安装入口改为 WORKFLOW-KIT 受管块 upsert，目标入口标记外内容保留，脚本可随 .workflow 迁移执行",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T02",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T02",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T16:37:11",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T02.md",
+          "04-实现记录/规格复核记录-20260529-T02.md",
+          "04-实现记录/代码质量复核记录-20260529-T02.md"
+        ],
+        "key_conclusions": [
+          "T02 已完成：重构前行为安全网覆盖关键状态机门禁和失败路径",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T03",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T03",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T16:46:28",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T03.md",
+          "04-实现记录/规格复核记录-20260529-T03.md",
+          "04-实现记录/代码质量复核记录-20260529-T03.md"
+        ],
+        "key_conclusions": [
+          "T03 已完成：阶段、子Agent 和 feature context 定义已建立单一事实源加载器并完成等价接入",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T04",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T04",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:01:54",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T04.md",
+          "04-实现记录/规格复核记录-20260529-T04.md",
+          "04-实现记录/代码质量复核记录-20260529-T04.md"
+        ],
+        "key_conclusions": [
+          "T04 完成：validator 调度权已收口到 stage_gates auto，CLI validator 不再隐式推进 state。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T05",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T05",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:11:53",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T05.md",
+          "04-实现记录/规格复核记录-20260529-T05.md",
+          "04-实现记录/代码质量复核记录-20260529-T05.md"
+        ],
+        "key_conclusions": [
+          "T05 完成：auto gate 前置条件已迁移到 workflow_definition.json 的 auto_prereqs，并由统一 evaluator 执行。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T06",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T06",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:20:01",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T06.md",
+          "04-实现记录/规格复核记录-20260529-T06.md",
+          "04-实现记录/代码质量复核记录-20260529-T06.md"
+        ],
+        "key_conclusions": [
+          "T06 完成：feature/bug 上下文包已模板化，must-read 缺失项会形成独立待生成/待定位清单。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T07",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T07",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:28:11",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T07.md",
+          "04-实现记录/规格复核记录-20260529-T07.md",
+          "04-实现记录/代码质量复核记录-20260529-T07.md"
+        ],
+        "key_conclusions": [
+          "T07 完成：公共 JSON helper 已建立，workflow 配置 schema 校验和用户友好错误输出已落地。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T08",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T08",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:36:32",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T08.md",
+          "04-实现记录/规格复核记录-20260529-T08.md",
+          "04-实现记录/代码质量复核记录-20260529-T08.md"
+        ],
+        "key_conclusions": [
+          "T08 完成：subagent-done 和 step-done 支持无歧义省参，多派遣场景仍保留精确匹配门禁。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T09",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T09",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:41:38",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T09.md",
+          "04-实现记录/规格复核记录-20260529-T09.md",
+          "04-实现记录/代码质量复核记录-20260529-T09.md"
+        ],
+        "key_conclusions": [
+          "T09 完成：公开文档已明确 workflow-kit 语言无关，并把 Java/Maven/Jar 收敛为默认构建 profile。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "implement-T10",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "implement-T10",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:46:05",
+        "status": "done",
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T10.md",
+          "04-实现记录/规格复核记录-20260529-T10.md",
+          "04-实现记录/代码质量复核记录-20260529-T10.md",
+          "05-测试验证/测试记录-20260529.md",
+          "05-测试验证/构建记录-20260529.md",
+          "05-测试验证/HTTP验收清单-20260529.md",
+          "05-测试验证/HTTP验收记录-20260529.md",
+          "05-测试验证/全链路验证报告-20260529.md",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "key_conclusions": [
+          "T10 完成：全量测试、安装 smoke、docs-only 构建/HTTP 验收、全链路报告和 RDTV 闭环数据均已完成。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "auto all-tasks-done",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "all-tasks-done",
+        "stage": "S6-实现",
+        "completed_at": "2026-05-29T17:46:33",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：all-tasks-done"
+        ],
+        "next_step": "dispatch-test-subagent",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "run-test-validation-mainline",
+        "stage": "S7-测试验证",
+        "completed_at": "2026-05-29T17:47:01",
+        "status": "done",
+        "outputs": [
+          "05-测试验证/测试记录-20260529.md"
+        ],
+        "key_conclusions": [
+          "S7 测试验证完成：全量 workflow 脚本测试、安装 smoke、py_compile 和 diff 检查均通过。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "auto test-done",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "test-done",
+        "stage": "S7-测试验证",
+        "completed_at": "2026-05-29T17:47:01",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：test-done"
+        ],
+        "next_step": "package-jar",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "package-jar",
+        "stage": "S8-构建验收",
+        "completed_at": "2026-05-29T17:47:35",
+        "status": "done",
+        "outputs": [
+          "05-测试验证/构建记录-20260529.md"
+        ],
+        "key_conclusions": [
+          "S8 docs-only 构建验收完成：本 feature 无业务运行产物，替代验证命令均通过。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "auto docs-only-artifact-not-required",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "docs-only-artifact-not-required",
+        "stage": "S8-构建验收",
+        "completed_at": "2026-05-29T17:47:35",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：docs-only-artifact-not-required"
+        ],
+        "next_step": "docs-only-http-acceptance",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "docs-only-http-acceptance",
+        "stage": "S8-构建验收",
+        "completed_at": "2026-05-29T17:48:25",
+        "status": "done",
+        "outputs": [
+          "05-测试验证/HTTP验收清单-20260529.md",
+          "05-测试验证/HTTP验收记录-20260529.md"
+        ],
+        "key_conclusions": [
+          "S8 docs-only HTTP 验收完成：本 feature 无 HTTP 行为影响，替代验收记录已通过。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "auto docs-only-http-acceptance-not-required",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "docs-only-http-acceptance-not-required",
+        "stage": "S8-构建验收",
+        "completed_at": "2026-05-29T17:48:25",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：docs-only-http-acceptance-not-required"
+        ],
+        "next_step": "dispatch-full-chain-validate",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "run-full-chain-validation-mainline",
+        "stage": "S9-交叉验证",
+        "completed_at": "2026-05-29T17:49:08",
+        "status": "done",
+        "outputs": [
+          "05-测试验证/全链路验证报告-20260529.md",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "key_conclusions": [
+          "S9 全链路验证完成：R-D-T-V 链路均已填入 V 结果且通过。",
+          "规范检查结论: [6/6 项通过]"
+        ],
+        "next_step": "auto cross-validate-done",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "cross-validate-done",
+        "stage": "S9-交叉验证",
+        "completed_at": "2026-05-29T17:49:08",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：cross-validate-done"
+        ],
+        "next_step": "rdtv-closure-check",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "rdtv-mapping-complete",
+        "stage": "S9-交叉验证",
+        "completed_at": "2026-05-29T17:49:37",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "自动转移完成：rdtv-mapping-complete"
+        ],
+        "next_step": "awaiting-approve-verify",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "approve-verify",
+        "stage": "S9-交叉验证",
+        "completed_at": "2026-05-29T18:18:55",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "交叉验证通过，进入发布关闭确认"
+        ],
+        "next_step": "awaiting-approve-release",
+        "blockers": [],
+        "corrections": []
+      },
+      {
+        "step": "approve-release",
+        "stage": "S10-验收发布",
+        "completed_at": "2026-05-29T18:23:19",
+        "status": "done",
+        "outputs": [],
+        "key_conclusions": [
+          "构建产物与HTTP验收通过，流程完结"
+        ],
+        "next_step": "completed",
+        "blockers": [],
+        "corrections": []
+      }
+    ],
+    "started_steps": [
+      {
+        "step": "openspec-structural-analysis",
+        "stage": "S2-需求确认",
+        "started_at": "2026-05-29T16:10:46",
+        "goal": "将原始改造总方案结构化为 formal-change 需求基线",
+        "expected_outputs": [
+          "01-需求确认/OpenSpec决策记录-20260529.md",
+          "01-需求确认/需求说明书-v1.md",
+          "01-需求确认/覆盖检查.json",
+          "01-需求确认/需求事实锚点.json"
+        ],
+        "done_definition": [
+          "OpenSpec 决策记录明确 formal-change",
+          "需求说明书包含安装合并、测试安全网、单一事实源、门禁自动化、声明式前置、状态字段、上下文包模板化、公共模块、配置校验、簿记降摩擦、文档去 Java 偏向等需求",
+          "覆盖检查 passed=true",
+          "需求事实锚点包含执行前必须修订的阻断点"
+        ],
+        "next_step": "req-cross-validation-fallback",
+        "status": "in_progress"
+      },
+      {
+        "step": "tech-spec-mainline",
+        "stage": "S3-技术方案",
+        "started_at": "2026-05-29T16:16:05",
+        "goal": "输出 F01 可执行技术方案与需求方案映射",
+        "expected_outputs": [
+          "02-技术方案/技术方案-v1.md",
+          "02-技术方案/需求方案映射.json",
+          "02-技术方案/代码影响点与依赖逻辑清单.md",
+          "02-技术方案/技术方案一致性检查.json"
+        ],
+        "done_definition": [
+          "每条 R 至少映射一个 D",
+          "需求事实锚点全部在一致性检查中 preserved",
+          "明确实施顺序和风险控制",
+          "不改变 S1-S10 阶段数量和门禁顺序"
+        ],
+        "next_step": "fact-inheritance-check",
+        "status": "in_progress"
+      },
+      {
+        "step": "writing-plans-mainline",
+        "stage": "S4-落地计划",
+        "started_at": "2026-05-29T16:18:09",
+        "goal": "将技术方案拆成可执行落地计划和任务清单",
+        "expected_outputs": [
+          "03-落地计划/落地计划-v1.md",
+          "03-落地计划/任务清单.json",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "done_definition": [
+          "每个任务包含 R/D 映射、scope、完成定义和验收方式",
+          "实施顺序满足先测试后重构",
+          "任务可逐项验证并记录实现记录"
+        ],
+        "next_step": "plans-complete",
+        "status": "done",
+        "completed_at": "2026-05-29T16:20:05"
+      },
+      {
+        "step": "implement-T01",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T16:22:06",
+        "goal": "实现 T01 安装入口受管块合并注入",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T01.md"
+        ],
+        "done_definition": [
+          "install_entry.py 和入口模板已实现",
+          "T01 测试先失败后通过",
+          "安装文档删除 开发AGENTS/开发CLAUDE 引用",
+          "实现记录写明改动与验证"
+        ],
+        "next_step": "implement-T02",
+        "status": "done",
+        "completed_at": "2026-05-29T16:32:32"
+      },
+      {
+        "step": "implement-T02",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T16:32:57",
+        "goal": "补充重构前行为回归测试安全网",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T02.md"
+        ],
+        "done_definition": [
+          "覆盖人工锚点、docs-only、worktree、artifact/http 和 bug 链关键路径",
+          "新增测试通过且现有测试不回退",
+          "实现记录与两阶段复核记录已写入"
+        ],
+        "next_step": "implement-T03",
+        "status": "done",
+        "completed_at": "2026-05-29T16:37:11"
+      },
+      {
+        "step": "implement-T03",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T16:37:46",
+        "goal": "实现阶段门禁子Agent定义的单一事实源加载器",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T03.md"
+        ],
+        "done_definition": [
+          "workflow_definition.json 和 workflow_def.py 已新增",
+          "至少 stage/subagent/context 定义可从加载器读取并校验",
+          "现有测试与新增测试通过",
+          "不改变 S1-S10 阶段数量和门禁顺序"
+        ],
+        "next_step": "implement-T04",
+        "status": "done",
+        "completed_at": "2026-05-29T16:46:28"
+      },
+      {
+        "step": "implement-T04",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T16:46:49",
+        "goal": "实现 gate-owned validators 并移除 validators.py 自动推进副作用",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T04.md"
+        ],
+        "done_definition": [
+          "stage_gates auto 可按 gate 调用 validator",
+          "validators CLI 保留诊断但不推进 state",
+          "缺映射不转移、补齐映射后转移的测试通过",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "implement-T05",
+        "status": "done",
+        "completed_at": "2026-05-29T17:01:54"
+      },
+      {
+        "step": "implement-T05",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T17:02:51",
+        "goal": "实现声明式 auto gate 前置条件与向后兼容 state runtime 元数据读取",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T05.md"
+        ],
+        "done_definition": [
+          "auto gate 前置条件由 workflow_definition.json 声明并统一 evaluator 执行",
+          "docs_only/worktree/build_config 等运行元数据可写入/读取且旧 state 兼容",
+          "现有 OpenSpec/artifact/HTTP/docs-only/cross-validate/RDTV/worktree 门禁结果不回退",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "编写 T05 RED 测试",
+        "status": "done",
+        "completed_at": "2026-05-29T17:11:53"
+      },
+      {
+        "step": "implement-T06",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T17:17:41",
+        "goal": "实现上下文包模板化与 must-read 缺口提示",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T06.md"
+        ],
+        "done_definition": [
+          "上下文包正文从模板渲染",
+          "feature 与 bug 上下文包包含模板标记",
+          "must-read 缺失时输出待生成/待定位清单",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "补齐 T06 实现记录并关闭",
+        "status": "done",
+        "completed_at": "2026-05-29T17:20:01"
+      },
+      {
+        "step": "implement-T07",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T17:21:06",
+        "goal": "实现公共工具模块与 project_config workflow 配置 schema 校验第一阶段",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T07.md"
+        ],
+        "done_definition": [
+          "新增 workflow_common.py 承载公共 JSON 读取错误类型",
+          "project_config.json 类型错误明确失败",
+          "缺失 workflow 配置键默认值可见且现有脚本读取兼容",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "编写 T07 RED 测试",
+        "status": "done",
+        "completed_at": "2026-05-29T17:28:11"
+      },
+      {
+        "step": "implement-T08",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T17:29:27",
+        "goal": "实现簿记命令降摩擦：subagent-done 单派遣可省 dispatch_id，step-done 可默认当前步骤",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T08.md"
+        ],
+        "done_definition": [
+          "单个未完成派遣时 subagent-done 可省 dispatch_id",
+          "多个未完成派遣时仍强制 dispatch_id",
+          "step-done 可默认当前 in_progress_step",
+          "入口文档说明最短安全调用",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "编写 T08 RED 测试",
+        "status": "done",
+        "completed_at": "2026-05-29T17:36:32"
+      },
+      {
+        "step": "implement-T09",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T17:37:45",
+        "goal": "更新公开文档的语言无关叙事，并补充前端/Go project_config 示例",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T09.md"
+        ],
+        "done_definition": [
+          "README/INSTALL/使用指南/工作流规范开头明确 workflow-kit 语言无关",
+          "Java/Maven/Jar 仅作为默认 profile",
+          "提供前端和 Go 构建配置示例",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "扫描并更新文档",
+        "status": "done",
+        "completed_at": "2026-05-29T17:41:38"
+      },
+      {
+        "step": "implement-T10",
+        "stage": "S6-实现",
+        "started_at": "2026-05-29T17:42:25",
+        "goal": "执行全链路验证并产出测试/构建/HTTP/发布相关记录",
+        "expected_outputs": [
+          "04-实现记录/实现记录-20260529-T10.md",
+          "05-测试验证/测试记录-20260529.md",
+          "05-测试验证/构建记录-20260529.md",
+          "05-测试验证/HTTP验收清单-20260529.md",
+          "05-测试验证/HTTP验收记录-20260529.md",
+          "05-测试验证/全链路验证报告-20260529.md"
+        ],
+        "done_definition": [
+          "所有脚本测试通过",
+          "docs-only 构建和 HTTP 替代记录完整",
+          "RDTV 映射闭环",
+          "实现记录与复核记录已写入"
+        ],
+        "next_step": "运行全量测试和安装 smoke",
+        "status": "done",
+        "completed_at": "2026-05-29T17:46:05"
+      },
+      {
+        "step": "run-test-validation-mainline",
+        "stage": "S7-测试验证",
+        "started_at": "2026-05-29T17:47:01",
+        "goal": "复核 T10 已产出的测试记录并完成 S7 测试验证",
+        "expected_outputs": [
+          "05-测试验证/测试记录-20260529.md"
+        ],
+        "done_definition": [
+          "测试记录存在且 passed: true",
+          "全量测试命令和结果已记录"
+        ],
+        "next_step": "auto test-done",
+        "status": "done",
+        "completed_at": "2026-05-29T17:47:01"
+      },
+      {
+        "step": "package-jar",
+        "stage": "S8-构建验收",
+        "started_at": "2026-05-29T17:47:35",
+        "goal": "按 docs-only 规则完成构建产物替代验收",
+        "expected_outputs": [
+          "05-测试验证/构建记录-20260529.md"
+        ],
+        "done_definition": [
+          "构建记录明确 not_applicable: true",
+          "构建记录明确 passed: true",
+          "替代验证命令已记录"
+        ],
+        "next_step": "auto docs-only-artifact-not-required",
+        "status": "done",
+        "completed_at": "2026-05-29T17:47:35"
+      },
+      {
+        "step": "docs-only-http-acceptance",
+        "stage": "S8-构建验收",
+        "started_at": "2026-05-29T17:48:25",
+        "goal": "按 docs-only 规则完成 HTTP 替代验收",
+        "expected_outputs": [
+          "05-测试验证/HTTP验收清单-20260529.md",
+          "05-测试验证/HTTP验收记录-20260529.md"
+        ],
+        "done_definition": [
+          "HTTP验收清单明确 not_applicable: true",
+          "HTTP验收记录明确 not_applicable: true 和 passed: true"
+        ],
+        "next_step": "auto docs-only-http-acceptance-not-required",
+        "status": "done",
+        "completed_at": "2026-05-29T17:48:25"
+      },
+      {
+        "step": "run-full-chain-validation-mainline",
+        "stage": "S9-交叉验证",
+        "started_at": "2026-05-29T17:49:08",
+        "goal": "复核全链路验证报告和 RDTV 映射闭环",
+        "expected_outputs": [
+          "05-测试验证/全链路验证报告-20260529.md",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "done_definition": [
+          "全链路验证报告 passed: true",
+          "RDTV 映射表所有链路 v/v_result 已填充"
+        ],
+        "next_step": "auto cross-validate-done",
+        "status": "done",
+        "completed_at": "2026-05-29T17:49:08"
+      }
+    ],
+    "pending_steps": [
+      "completed"
+    ],
+    "context_usage_pct": 0,
+    "compact_recommended": false,
+    "progress_notes": [
+      {
+        "step": "writing-plans-mainline",
+        "stage": "S4-落地计划",
+        "recorded_at": "2026-05-29T16:19:50",
+        "completed_action": "已生成落地计划和任务清单",
+        "key_conclusions": [
+          "任务拆分为 T01-T10，其中 T01 安装入口、T02 测试安全网优先执行",
+          "每个任务包含 R/D 映射、scope、完成定义和验收方式"
+        ],
+        "outputs": [
+          "03-落地计划/落地计划-v1.md",
+          "03-落地计划/任务清单.json",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "verification": [
+          "任务清单覆盖 R01-R11"
+        ],
+        "next_step": "plans-complete",
+        "blockers": []
+      },
+      {
+        "step": "implement-T01",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T16:30:29",
+        "completed_action": "T01 安装入口受管块合并注入已在代码 worktree 实现并验证",
+        "key_conclusions": [
+          "install_entry.py 使用随 .workflow 迁移的 entry 模板，不依赖源仓库根目录",
+          "入口文件只管理 WORKFLOW-KIT 受管块，项目覆盖层保留在标记外"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T01.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py 通过 7 tests",
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py 通过 5 tests",
+          "旧模板名 grep 无输出",
+          "临时目录安装 smoke test 通过"
+        ],
+        "next_step": "implement-T02",
+        "blockers": []
+      },
+      {
+        "step": "implement-T02",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T16:36:40",
+        "completed_action": "T02 重构前行为回归测试已补充并验证",
+        "key_conclusions": [
+          "test_workflow_gates.py 从 5 个测试扩展到 12 个测试",
+          "新增覆盖人工锚点、docs-only、worktree、artifact/http 失败路径"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T02.md",
+          "04-实现记录/规格复核记录-20260529-T02.md",
+          "04-实现记录/代码质量复核记录-20260529-T02.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py 通过 12 tests",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py 通过 7 tests"
+        ],
+        "next_step": "implement-T03",
+        "blockers": []
+      },
+      {
+        "step": "implement-T03",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T16:46:28",
+        "completed_action": "T03 单一事实源加载器已实现并通过测试",
+        "key_conclusions": [
+          "workflow_definition.json 与 workflow_def.py 已新增",
+          "stage_gates/context_packets/init_feature/validators 已接入加载器的第一阶段等价迁移"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T03.md",
+          "04-实现记录/规格复核记录-20260529-T03.md",
+          "04-实现记录/代码质量复核记录-20260529-T03.md"
+        ],
+        "verification": [
+          "test_workflow_def.py 4 tests 通过",
+          "test_workflow_gates.py 12 tests 通过",
+          "test_install_entry.py 7 tests 通过"
+        ],
+        "next_step": "implement-T04",
+        "blockers": []
+      },
+      {
+        "step": "implement-T04",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:01:42",
+        "completed_action": "完成 T04 gate-owned validators 改造、回归测试和实现记录补齐",
+        "key_conclusions": [
+          "stage_gates auto 已按 gate_validators 调用 validator 后再推进 state",
+          "validators.py feature validators 已移除自动推进副作用，CLI 保留诊断语义"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T04.md",
+          "04-实现记录/规格复核记录-20260529-T04.md",
+          "04-实现记录/代码质量复核记录-20260529-T04.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 5 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 20 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "python3 -m py_compile workflow scripts OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T04",
+        "blockers": []
+      },
+      {
+        "step": "implement-T05",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:11:36",
+        "completed_action": "完成 T05 声明式 auto_prereqs evaluator、runtime 兼容和规范说明",
+        "key_conclusions": [
+          "auto gate 前置条件已集中到 workflow_definition.json 的 auto_prereqs",
+          "旧 state 缺 workflow_runtime 时 load_state 会补齐默认 doc_root/code_worktree_path"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T05.md",
+          "04-实现记录/规格复核记录-20260529-T05.md",
+          "04-实现记录/代码质量复核记录-20260529-T05.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 7 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 23 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "python3 -m py_compile workflow scripts OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T05",
+        "blockers": []
+      },
+      {
+        "step": "implement-T06",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:19:38",
+        "completed_action": "完成 T06 上下文包模板化、pending must-read 缺口清单和回归测试",
+        "key_conclusions": [
+          "feature/bug 上下文包正文已改为模板渲染",
+          "must-read 缺失项已输出到独立待生成/待定位清单"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T06.md",
+          "04-实现记录/规格复核记录-20260529-T06.md",
+          "04-实现记录/代码质量复核记录-20260529-T06.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 25 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 7 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "python3 -m py_compile workflow scripts OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T06",
+        "blockers": []
+      },
+      {
+        "step": "implement-T07",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:27:47",
+        "completed_action": "完成 T07 公共 JSON helper、workflow 配置 schema 校验和友好错误输出",
+        "key_conclusions": [
+          "workflow_common.py 已提供公共 JSON/atomic write helper",
+          "project_config.json workflow 类型错误会明确失败，缺失键仍保留默认值"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T07.md",
+          "04-实现记录/规格复核记录-20260529-T07.md",
+          "04-实现记录/代码质量复核记录-20260529-T07.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 28 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 7 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "python3 -m py_compile workflow scripts OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T07",
+        "blockers": []
+      },
+      {
+        "step": "implement-T08",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:35:54",
+        "completed_action": "完成 T08 subagent-done/step-done 省参能力、歧义保护和文档更新",
+        "key_conclusions": [
+          "单个未完成同名派遣时 subagent-done 可省 dispatch_id，多派遣仍强制精确 ID",
+          "step-done CLI 可从当前 in_progress_step 推断步骤名"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T08.md",
+          "04-实现记录/规格复核记录-20260529-T08.md",
+          "04-实现记录/代码质量复核记录-20260529-T08.md"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 31 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 7 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "python3 -m py_compile workflow scripts OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T08",
+        "blockers": []
+      },
+      {
+        "step": "implement-T09",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:41:08",
+        "completed_action": "完成 T09 语言无关文档叙事、构建 profile 示例和 grep 复核",
+        "key_conclusions": [
+          "公开文档已明确 workflow-kit 语言无关，Java/Maven/Jar 仅为默认 profile",
+          "README/docs README/INSTALL/使用指南/工作流规范已覆盖前端与 Go 示例"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T09.md",
+          "04-实现记录/规格复核记录-20260529-T09.md",
+          "04-实现记录/代码质量复核记录-20260529-T09.md"
+        ],
+        "verification": [
+          "rg 语言/构建 profile 关键词已复核",
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 31 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 7 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T09",
+        "blockers": []
+      },
+      {
+        "step": "implement-T10",
+        "stage": "S6-实现",
+        "recorded_at": "2026-05-29T17:45:37",
+        "completed_action": "完成 T10 全量测试、安装 smoke、docs-only 构建/HTTP记录、全链路报告和 RDTV V 结果填充",
+        "key_conclusions": [
+          "所有脚本测试、安装 smoke、py_compile、diff 检查均通过",
+          "docs-only 构建和 HTTP 替代验收记录已写入，RDTV 已填 pass"
+        ],
+        "outputs": [
+          "04-实现记录/实现记录-20260529-T10.md",
+          "04-实现记录/规格复核记录-20260529-T10.md",
+          "04-实现记录/代码质量复核记录-20260529-T10.md",
+          "05-测试验证/测试记录-20260529.md",
+          "05-测试验证/构建记录-20260529.md",
+          "05-测试验证/HTTP验收清单-20260529.md",
+          "05-测试验证/HTTP验收记录-20260529.md",
+          "05-测试验证/全链路验证报告-20260529.md",
+          "03-落地计划/RDTV映射表.json"
+        ],
+        "verification": [
+          "python3 docs/.workflow/scripts/tests/test_workflow_gates.py: 31 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_workflow_def.py: 7 tests OK",
+          "python3 docs/.workflow/scripts/tests/test_install_entry.py: 7 tests OK",
+          "install_entry.py smoke OK",
+          "py_compile OK",
+          "git diff --check OK"
+        ],
+        "next_step": "step-done implement-T10",
+        "blockers": []
+      }
+    ]
+  },
+  "in_progress_step": null,
+  "subagent_log": [],
+  "context_manifest": {
+    "current_packet": "06-上下文包/上下文包-S10-验收发布.md",
+    "packets": [
+      {
+        "stage": "S3",
+        "stage_key": "S3",
+        "stage_display": "技术方案",
+        "task": null,
+        "path": "06-上下文包/上下文包-S3-技术方案.md",
+        "updated_at": "2026-05-29T16:15:40"
+      },
+      {
+        "stage": "S4",
+        "stage_key": "S4",
+        "stage_display": "落地计划",
+        "task": null,
+        "path": "06-上下文包/上下文包-S4-落地计划.md",
+        "updated_at": "2026-05-29T16:17:54"
+      },
+      {
+        "stage": "S5",
+        "stage_key": "S5",
+        "stage_display": "任务拆分",
+        "task": null,
+        "path": "06-上下文包/上下文包-S5-任务拆分.md",
+        "updated_at": "2026-05-29T16:20:18"
+      },
+      {
+        "stage": "S6",
+        "stage_key": "S6",
+        "stage_display": "实现",
+        "task": "T10",
+        "path": "06-上下文包/上下文包-S6-实现.md",
+        "updated_at": "2026-05-29T17:42:25"
+      },
+      {
+        "stage": "S10",
+        "stage_key": "S10",
+        "stage_display": "验收发布",
+        "task": null,
+        "path": "06-上下文包/上下文包-S10-验收发布.md",
+        "updated_at": "2026-05-29T18:19:12"
+      }
+    ]
+  },
+  "workflow_runtime": {
+    "doc_root": "/Users/zhangweihong/Documents/module/workflow-kit",
+    "code_worktree_path": "/Users/zhangweihong/Documents/module/wk-f01-workflow-automation"
+  },
+  "exception_log": [
+    {
+      "type": "subagent-fallback",
+      "detail": "用户要求开始落地但未明确授权使用子 Agent / 多 Agent；本阶段由主Agent按同一检查清单执行需求交叉验证。",
+      "stage": "S2-需求确认",
+      "step": "dispatch-cross-validate-subagent",
+      "recorded_at": "2026-05-29T16:14:37"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S4 落地计划阶段未明确授权使用子 Agent / 多 Agent；由主Agent按落地计划子Agent输出标准产出计划和任务清单。",
+      "stage": "S4-落地计划",
+      "step": "writing-plans",
+      "recorded_at": "2026-05-29T16:18:09"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S5 任务拆分阶段未明确授权使用子 Agent / 多 Agent；任务清单已由主Agent按任务拆分输出标准产出。",
+      "stage": "S5-任务拆分",
+      "step": "task-split",
+      "recorded_at": "2026-05-29T16:20:32"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S6 T01 未明确授权使用子 Agent / 多 Agent；由主Agent在 code_root=/Users/zhangweihong/Documents/module/wk-f01-workflow-automation 中按 TDD 实现。",
+      "stage": "S6-实现",
+      "step": "dispatch-impl-subagent-per-task",
+      "recorded_at": "2026-05-29T16:22:05"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S6 T05 未明确授权使用子 Agent / 多 Agent；由主Agent按任务实现、规格复核、代码质量复核标准在 code_root=/Users/zhangweihong/Documents/module/wk-f01-workflow-automation 执行。",
+      "stage": "S6-实现",
+      "step": "implement-T05",
+      "recorded_at": "2026-05-29T17:02:51"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S6 T06 未明确授权使用子 Agent / 多 Agent；由主Agent按任务实现、规格复核、代码质量复核标准在 code_root=/Users/zhangweihong/Documents/module/wk-f01-workflow-automation 执行。",
+      "stage": "S6-实现",
+      "step": "implement-T06",
+      "recorded_at": "2026-05-29T17:17:41"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S6 T07 未明确授权使用子 Agent / 多 Agent；由主Agent按任务实现、规格复核、代码质量复核标准在 code_root=/Users/zhangweihong/Documents/module/wk-f01-workflow-automation 执行。",
+      "stage": "S6-实现",
+      "step": "implement-T07",
+      "recorded_at": "2026-05-29T17:21:06"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S6 T09 未明确授权使用子 Agent / 多 Agent；由主Agent按任务实现、规格复核、代码质量复核标准在 code_root=/Users/zhangweihong/Documents/module/wk-f01-workflow-automation 执行。",
+      "stage": "S6-实现",
+      "step": "implement-T09",
+      "recorded_at": "2026-05-29T17:37:45"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S6 T10 未明确授权使用子 Agent / 多 Agent；由主Agent按全链路验证、测试验证、构建验收和发布记录标准在 code_root=/Users/zhangweihong/Documents/module/wk-f01-workflow-automation 执行。",
+      "stage": "S6-实现",
+      "step": "implement-T10",
+      "recorded_at": "2026-05-29T17:42:25"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S7 测试验证阶段未明确授权使用子 Agent / 多 Agent；由主Agent按测试验证输出标准复核 05-测试验证/测试记录-20260529.md。",
+      "stage": "S7-测试验证",
+      "step": "dispatch-test-subagent",
+      "recorded_at": "2026-05-29T17:47:01"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S8 构建验收阶段未明确授权使用子 Agent / 多 Agent；本 feature 为 docs-only/workflow-kit 脚本与文档变更，由主Agent按 docs-only 构建和 HTTP 替代验收记录推进。",
+      "stage": "S8-构建验收",
+      "step": "package-jar",
+      "recorded_at": "2026-05-29T17:47:35"
+    },
+    {
+      "type": "subagent-fallback",
+      "detail": "S9 全链路验证阶段未明确授权使用子 Agent / 多 Agent；由主Agent按全链路验证报告和 RDTV 闭环标准执行。",
+      "stage": "S9-交叉验证",
+      "step": "dispatch-full-chain-validate",
+      "recorded_at": "2026-05-29T17:49:08"
+    }
+  ],
+  "snapshots": [
+    "state-20260529-174825-217161.json",
+    "state-20260529-174825-278851.json",
+    "state-20260529-174908-023854.json",
+    "state-20260529-174908-082139.json",
+    "state-20260529-174908-144323.json",
+    "state-20260529-174908-206054.json",
+    "state-20260529-174937-545224.json",
+    "state-20260529-181855-120114.json",
+    "state-20260529-181912-460160.json",
+    "state-20260529-182319-935566.json"
+  ]
+}
